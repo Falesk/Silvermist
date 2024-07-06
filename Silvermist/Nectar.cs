@@ -10,7 +10,7 @@ namespace Silvermist
     {
         public Nectar(AbstractPhysicalObject abstr) : base(abstr)
         {
-            bodyChunks = new BodyChunk[] { new BodyChunk(this, 0, Vector2.zero, 7, 0.05f) };
+            bodyChunks = new BodyChunk[] { new BodyChunk(this, 0, Vector2.zero, 5, 0.05f) };
             bodyChunkConnections = new BodyChunkConnection[0];
             gravity = 0.9f;
             airFriction = 0.999f;
@@ -23,6 +23,7 @@ namespace Silvermist
             glimmer = 0f;
             lastGlimmerTime = 0;
             swallowed = 1f;
+            releaseCounter = 0;
             mode = Mode.Free;
             Random.State state = Random.state;
             Random.InitState(abstr.ID.RandomSeed);
@@ -39,11 +40,17 @@ namespace Silvermist
                 rotation = Custom.PerpendicularVector(Custom.DirVec(firstChunk.pos, grabbedBy[0].grabber.mainBodyChunk.pos));
                 rotation.y = Mathf.Abs(rotation.y);
             }
-            if (firstChunk.contactPoint.y < 0)
+            if (firstChunk.contactPoint.y < 0 && attachmentPos == null)
             {
                 rotation = (rotation - Custom.PerpendicularVector(rotation) * 0.1f * firstChunk.vel.x).normalized;
                 firstChunk.vel.x *= 0.7f;
             }
+            if (attachmentPos != null)
+            {
+                firstChunk.pos = attachmentPos.Value;
+                firstChunk.vel *= 0f;
+            }
+            else attachmentPos = null;
 
             lastGlimmerTime += (lastGlimmerTime > 80) ? 0 : 1;
             lastGlimmer = glimmer;
@@ -65,6 +72,9 @@ namespace Silvermist
                 ((player.grasps[0]?.grabbed is Nectar nectar && nectar.abstractPhysicalObject.ID == abstractPhysicalObject.ID) ||
                 (player.grasps[1]?.grabbed is Nectar && (player.grasps[0] == null || !(player.grasps[0].grabbed is IPlayerEdible))));
             swallowed = SwallowedChange(swallowed, flag);
+
+            if (mode == Mode.StuckInWall)
+                releaseCounter -= (releaseCounter > 0) ? 1 : 0;
         }
 
         public override void PlaceInRoom(Room placeRoom)
@@ -78,8 +88,24 @@ namespace Silvermist
         public override void TerrainImpact(int chunk, IntVector2 direction, float speed, bool firstContact)
         {
             base.TerrainImpact(chunk, direction, speed, firstContact);
-            if (firstContact && speed > 3f)
-                room.PlaySound(SoundID.Slime_Mold_Terrain_Impact, firstChunk, false, Custom.LerpMap(speed, 0f, 8f, 0.2f, 1f), 1f);
+            if (firstContact && mode == Mode.Free && grabbedBy.Count == 0)
+            {
+                ChangeMode(Mode.StuckInWall);
+                if (speed > 3f)
+                {
+                    room.PlaySound(SoundID.Slime_Mold_Terrain_Impact, firstChunk, false, Custom.LerpMap(speed, 0f, 8f, 0.2f, 1f), 1f);
+                    Droplets();
+                }
+            }
+            else if (mode == Mode.Free)
+                ChangeMode(Mode.StuckInWall);
+        }
+
+        public void Droplets()
+        {
+            if (room.BeingViewed)
+                for (int i = 0; i < 4 + Random.Range(0, 5); i++)
+                    room.AddObject(new WaterDrip(firstChunk.pos, -firstChunk.vel * Random.value * 0.5f + Custom.DegToVec(360f * Random.value) * firstChunk.vel.magnitude * Random.value * 0.5f, false));
         }
 
         public override void Collide(PhysicalObject otherObject, int myChunk, int otherChunk)
@@ -127,33 +153,20 @@ namespace Silvermist
             sLeaser.sprites[4].x = pos.x - camPos.x - 3f;
             sLeaser.sprites[4].y = pos.y - camPos.y + 4f;
 
-            if (swallowed < 1f)
-            {
-                float num = Mathf.Lerp(lastSwallow, swallowed, timeStacker);
-                sLeaser.sprites[0].scale = num;
-                sLeaser.sprites[1].scaleX = 1.3f * num;
-                sLeaser.sprites[1].scaleY = num;
-                sLeaser.sprites[2].scale = num;
-                sLeaser.sprites[3].scaleX = 0.85f * num;
-                sLeaser.sprites[3].scaleY = 0.65f * num;
-                sLeaser.sprites[4].scale = 1.1f * num;
-            }
-            else
-            {
-                sLeaser.sprites[0].scale = 1f;
-                sLeaser.sprites[1].scaleX = 1.3f;
-                sLeaser.sprites[1].scaleY = 1f;
-                sLeaser.sprites[2].scale = 1f;
-                sLeaser.sprites[3].scaleX = 0.85f;
-                sLeaser.sprites[3].scaleY = 0.65f;
-                sLeaser.sprites[4].scale = 1.1f;
-            }
+            float num = Mathf.Lerp(lastSwallow, swallowed, timeStacker);
+            sLeaser.sprites[0].scale = num;
+            sLeaser.sprites[1].scaleX = 1.3f * num;
+            sLeaser.sprites[1].scaleY = num;
+            sLeaser.sprites[2].scale = num;
+            sLeaser.sprites[3].scaleX = 0.85f * num;
+            sLeaser.sprites[3].scaleY = 0.65f * num;
+            sLeaser.sprites[4].scale = 1.1f * num;
 
             if (glimmer != 0f)
             {
-                float num = Mathf.Lerp(lastGlimmer, glimmer, timeStacker);
-                sLeaser.sprites[4].color = Color.Lerp(Color.Lerp(color, Color.white, num), rCam.currentPalette.blackColor, 0.33f * Random.value);
-                sLeaser.sprites[4].alpha = Mathf.Clamp01(Mathf.Lerp(Mathf.Lerp((0.7f - num) * (Random.value + 0.5f), num, num), 0f, darkness) * 1.75f);
+                float glim = Mathf.Lerp(lastGlimmer, glimmer, timeStacker);
+                sLeaser.sprites[4].color = Color.Lerp(Color.Lerp(color, Color.white, glim), rCam.currentPalette.blackColor, 0.33f * Random.value);
+                sLeaser.sprites[4].alpha = Mathf.Clamp01(Mathf.Lerp(Mathf.Lerp((0.7f - glim) * (Random.value + 0.5f), glim, glim), 0f, darkness) * 1.75f);
                 sLeaser.sprites[3].color = Color.Lerp(color, blinkColor, sLeaser.sprites[4].alpha);
                 glimmer *= (glimmer < 0.3f) ? 0 : 0.8f;
             }
@@ -195,12 +208,18 @@ namespace Silvermist
             room.PlaySound(SoundID.Slugcat_Bite_Slime_Mold, firstChunk.pos);
             firstChunk.MoveFromOutsideMyUpdate(eu, grasp.grabber.mainBodyChunk.pos);
             (grasp.grabber as Player).ObjectEaten(this);
-            (grasp.grabber as Player).Stun(500 + (int)(Random.value * 100));
+            (grasp.grabber as Player).Stun(200 + (int)(Random.value * 100));
             grasp.Release();
             Destroy();
         }
 
-        public void ThrowByPlayer() { }
+        public void ThrowByPlayer() => ChangeMode(Mode.Thrown);
+
+        public override void PickedUp(Creature upPicker)
+        {
+            base.PickedUp(upPicker);
+            ChangeMode(Mode.Free);
+        }
 
         public static float SwallowedChange(float swallowed, bool growth)
         {
@@ -219,8 +238,17 @@ namespace Silvermist
                 return;
             if (newMode == Mode.Thrown || newMode == Mode.Free)
                 ChangeCollisionLayer(1);
-            else if (newMode == Mode.StuckInWall || newMode == Mode.StuckInCreature)
+            else if (newMode == Mode.StuckInWall)
+            {
+                if (mode == Mode.Free)
+                    releaseCounter = 60;
+                attachmentPos = room.MiddleOfTile(firstChunk.pos);
                 ChangeCollisionLayer(0);
+            }
+            else if (newMode == Mode.StuckInCreature)
+                ChangeCollisionLayer(0);
+            if (newMode != Mode.StuckInWall)
+                attachmentPos = null;
             mode = newMode;
         }
 
@@ -231,6 +259,7 @@ namespace Silvermist
         public Mode mode;
         public Vector2 rotation;
         public Vector2 lastRotation;
+        public Vector2? attachmentPos;
         public float darkness;
         public float lastDarkness;
         public float glimmer;
@@ -239,6 +268,7 @@ namespace Silvermist
         public float lastSwallow;
         public int lastGlimmerTime;
         public int jellySprite;
+        public int releaseCounter;
         public bool tracked;
     }
 }
