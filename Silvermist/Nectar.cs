@@ -43,11 +43,6 @@ namespace Silvermist
                 rotation = Custom.PerpendicularVector(Custom.DirVec(firstChunk.pos, grabbedBy[0].grabber.mainBodyChunk.pos));
                 rotation.y = Mathf.Abs(rotation.y);
             }
-            if (firstChunk.contactPoint.y < 0 && attachmentPos == null)
-            {
-                rotation = (rotation - Custom.PerpendicularVector(rotation) * 0.1f * firstChunk.vel.x).normalized;
-                firstChunk.vel.x *= 0.7f;
-            }
             if (attachmentPos != null && mode == Mode.StuckInWall)
             {
                 firstChunk.pos = attachmentPos.Value;
@@ -120,9 +115,9 @@ namespace Silvermist
                     {
                         foreach (PhysicalObject obj in room.physicalObjects[1])
                         {
-                            if (obj is Creature creature && creature.bodyChunks.Any(ch => Vector2.Distance(ch.pos, firstChunk.pos) < 10f))
+                            if (obj is Creature creature && creature.bodyChunks.Any(ch => Vector2.Distance(ch.pos, firstChunk.pos) < ((creature is Player) ? 10f : 20f)))
                             {
-                                BodyChunk chunk = creature.bodyChunks.First(ch => Vector2.Distance(ch.pos, firstChunk.pos) < 10f);
+                                BodyChunk chunk = creature.bodyChunks.First(ch => Vector2.Distance(ch.pos, firstChunk.pos) < ((creature is Player) ? 10f : 20f));
                                 stuckInObject = creature;
                                 stuckInChunkIndex = chunk.index;
                                 room.PlaySound(SoundID.Pole_Mimic_Grab_Player, firstChunk, false, 0.8f, 1.2f);
@@ -135,7 +130,7 @@ namespace Silvermist
                         float distance = Vector2.Distance(firstChunk.pos, StuckInChunk.pos);
                         if (Vector2.Distance(firstChunk.pos, StuckInChunk.lastPos) < distance && distance > ((StuckInChunk.owner is Player) ? 10f : 20f))
                         {
-                            float num = (StuckInChunk.owner is Player) ? 1.75f * Mathf.Sqrt(distance) - 5f :  Mathf.Sqrt(distance) - 2;
+                            float num = ((StuckInChunk.owner is Player) ? 5f : 3.5f) * (distance / 30f);
                             StuckInChunk.vel += Custom.DirVec(StuckInChunk.pos, firstChunk.pos) * num;
                             if (Random.value < 0.1f * (distance / 30f))
                                 room.AddObject(new WaterDrip(Vector2.Lerp(firstChunk.pos, StuckInChunk.pos, Random.value), Vector2.zero, false));
@@ -199,7 +194,6 @@ namespace Silvermist
                 for (int i = 0; i < 4 + Random.Range(0, 5); i++)
                     room.AddObject(new WaterDrip(firstChunk.pos, -firstChunk.vel * Random.value * 0.5f + Custom.DegToVec(360f * Random.value) * firstChunk.vel.magnitude * Random.value * 0.5f, false));
                 room.PlaySound(SoundID.Slime_Mold_Terrain_Impact, firstChunk, false, Custom.LerpMap(10 * Random.value, 0f, 8f, 0.2f, 1f), 1f);
-                Debug.Log("Droplets");
             }
         }
 
@@ -219,13 +213,14 @@ namespace Silvermist
 
         public void InitiateSprites(RoomCamera.SpriteLeaser sLeaser, RoomCamera rCam)
         {
-            float rd = (180f / 8f * jellySprite + ((jellySprite < 3) ? 0 : 10 * (-0.5f * jellySprite + 3))) * Mathf.PI / 180f;
+            var jelSpr = Futile.atlasManager.GetElementWithName($"Cicada{jellySprite}head");
+            Vector2 anchors = Plugin.TrimmedAnchors(jelSpr);
+
             sLeaser.sprites = new FSprite[]
             {
                 new FSprite("Futile_White") { shader = rCam.game.rainWorld.Shaders["WaterNut"] },
-                new FSprite($"Cicada{jellySprite}head") { anchorX = 0.5f - 0.18f * Mathf.Sin(rd), anchorY =  0.5f - 0.18f * Mathf.Cos(rd), alpha = 0.8f },
+                new FSprite(jelSpr) { anchorX = anchors.x, anchorY = anchors.y, alpha = 0.8f },
                 new FSprite("DangleFruit2A") { anchorY = 0.7f, anchorX = 0.6f },
-                new FSprite("JetFishEyeA") { anchorY = 0.8f, alpha = 0.7f },
                 new FSprite("Futile_White") { alpha = 0f, shader = rCam.game.rainWorld.Shaders["FlatLightBehindTerrain"] },
             };
             AddToContainer(sLeaser, rCam, null);
@@ -237,10 +232,12 @@ namespace Silvermist
             Vector2 rt = Vector3.Slerp(lastRotation, rotation, timeStacker);
             lastDarkness = darkness;
             darkness = rCam.room.Darkness(pos) * (1f - rCam.room.LightSourceExposure(pos));
+            if (darkness != lastDarkness)
+                ApplyPalette(sLeaser, rCam, rCam.currentPalette);
 
             sLeaser.sprites[0].x = pos.x - camPos.x;
             sLeaser.sprites[0].y = pos.y - camPos.y;
-            sLeaser.sprites[0].rotation = Custom.VecToDeg(rt);
+            sLeaser.sprites[0].rotation = 0f;
             sLeaser.sprites[1].x = pos.x - camPos.x;
             sLeaser.sprites[1].y = pos.y - camPos.y;
             sLeaser.sprites[1].rotation = Custom.VecToDeg(rt);
@@ -249,9 +246,6 @@ namespace Silvermist
             sLeaser.sprites[2].rotation = 140f + Custom.VecToDeg(rt);
             sLeaser.sprites[3].x = pos.x - camPos.x - 3f;
             sLeaser.sprites[3].y = pos.y - camPos.y + 4f;
-            sLeaser.sprites[3].rotation = 120f;
-            sLeaser.sprites[4].x = pos.x - camPos.x - 3f;
-            sLeaser.sprites[4].y = pos.y - camPos.y + 4f;
 
             float num = Mathf.Lerp(lastSwallow, swallowed, timeStacker);
             float num2 = (mode == Mode.StuckInCreature) ? 0.8f : 1f;
@@ -259,31 +253,40 @@ namespace Silvermist
             float subm = (diving > 0) ? 1f + 0.25f * num3 : 1f;
             sLeaser.sprites[0].scale = num * num2 * subm;
             sLeaser.sprites[1].scaleX = 1.3f * num * num2 * subm;
-            sLeaser.sprites[1].scaleY = num * num2 * subm;
+            sLeaser.sprites[1].scaleY = 1.1f * num * num2 * subm;
             sLeaser.sprites[2].scale = num * num2 * subm;
-            sLeaser.sprites[3].scaleX = 0.85f * num * num2 * subm;
-            sLeaser.sprites[3].scaleY = 0.65f * num * num2 * subm;
-            sLeaser.sprites[4].scale = 1.1f * num * num2 * subm;
+            sLeaser.sprites[3].scale = 1.1f * num * num2 * subm;
 
-            if (glimmer != 0f)
+            if (mode == Mode.StuckInWall && stuckInObject != null)
+            {
+                Vector2 v = StuckInChunk.pos - pos;
+                float angR = Mathf.Acos(v.x / v.magnitude) + ((v.y > 0) ? 0f : 2f * Mathf.Acos(-v.x / v.magnitude));
+                float dist = Vector2.Distance(pos, StuckInChunk.pos);
+                sLeaser.sprites[0].x = pos.x - camPos.x + 3f * Mathf.Cos(angR) * (dist / 30f);
+                sLeaser.sprites[0].y = pos.y - camPos.y + 3f * Mathf.Sin(angR) * (dist / 30f);
+                sLeaser.sprites[0].rotation = -angR * 180f / Mathf.PI;
+                sLeaser.sprites[0].scaleX = 1f + (dist / 40f);
+            }
+
+            if (glimmer != 0f && diving == 0f)
             {
                 float glim = Mathf.Lerp(lastGlimmer, glimmer, timeStacker);
-                sLeaser.sprites[4].color = Color.Lerp(Color.Lerp(color, Color.white, glim), rCam.currentPalette.blackColor, 0.33f * Random.value);
-                sLeaser.sprites[4].alpha = Mathf.Clamp01(Mathf.Lerp(Mathf.Lerp((0.7f - glim) * (Random.value + 0.5f), glim, glim), 0f, darkness) * 1.75f);
-                sLeaser.sprites[3].color = Color.Lerp(color, blinkColor, sLeaser.sprites[4].alpha);
+                sLeaser.sprites[3].color = Color.Lerp(Color.Lerp(color, Color.white, glim), rCam.currentPalette.blackColor, 0.33f * Random.value);
+                sLeaser.sprites[3].alpha = Mathf.Clamp01(Mathf.Lerp(Mathf.Lerp((0.7f - glim) * (Random.value + 0.5f), glim, glim), 0f, darkness) * 1.75f);
                 glimmer *= (glimmer < 0.3f) ? 0 : 0.8f;
             }
-            else
-            {
-                sLeaser.sprites[4].alpha = 0f;
-                sLeaser.sprites[3].color = Color.Lerp(Color.white, rCam.currentPalette.blackColor, darkness);
-            }
-            if (darkness != lastDarkness || diving > 0)
-                ApplyPalette(sLeaser, rCam, rCam.currentPalette);
+            else sLeaser.sprites[3].alpha = 0f;
 
             if (blink > 0 && Random.value < 0.5f)
                 sLeaser.sprites[1].color = blinkColor;
             else sLeaser.sprites[1].color = color;
+
+            if (diving > 0f)
+            {
+                for (int i = 0; i < sLeaser.sprites.Length - 2; i++)
+                    sLeaser.sprites[i].color = Color.Lerp(sLeaser.sprites[i].color, rCam.PixelColorAtCoordinate(pos), num3);
+                sLeaser.sprites[0].isVisible = false;
+            }
             if (slatedForDeletetion || rCam.room != room)
                 sLeaser.CleanSpritesAndRemove();
         }
@@ -291,21 +294,8 @@ namespace Silvermist
         public void ApplyPalette(RoomCamera.SpriteLeaser sLeaser, RoomCamera rCam, RoomPalette palette)
         {
             color = Color.Lerp(new Color(1f, 0.8f, 0.8f), palette.blackColor, darkness);
-            //if (diving > 0)
-            //{
-            //    color.a = 1f - diving;
-            //    Debug.Log(sLeaser.sprites[1].color.ToString());
-            //}
             sLeaser.sprites[0].color = color;
             sLeaser.sprites[2].color = Color.Lerp(new Color(0.9f, 0.5f, 0.5f), palette.blackColor, darkness);
-            sLeaser.sprites[3].color = Color.Lerp(Color.white, palette.blackColor, darkness);
-
-            for (int i = 0; i < sLeaser.sprites.Length; i++)
-            {
-                float a = (i == 1) ? 0.8f : (i == 3) ? 0.7f : 1f;
-                sLeaser.sprites[i].alpha = a * (1f - diving);
-            }
-            sLeaser.sprites[0].isVisible = diving == 0;
         }
 
         public void AddToContainer(RoomCamera.SpriteLeaser sLeaser, RoomCamera rCam, FContainer newContatiner)
@@ -316,10 +306,8 @@ namespace Silvermist
                 sprite.RemoveFromContainer();
                 newContatiner.AddChild(sprite);
             }
-            if (diving == 0f)
-                rCam.ReturnFContainer("GrabShaders").AddChild(sLeaser.sprites[0]);
-            else rCam.ReturnFContainer("Foreground").AddChild(sLeaser.sprites[0]);
-            rCam.ReturnFContainer("Foreground").AddChild(sLeaser.sprites[4]);
+            rCam.ReturnFContainer("GrabShaders").AddChild(sLeaser.sprites[0]);
+            rCam.ReturnFContainer("Foreground").AddChild(sLeaser.sprites[3]);
         }
 
         public void BitByPlayer(Creature.Grasp grasp, bool eu)
@@ -362,7 +350,10 @@ namespace Silvermist
             else timeSinceAttachment = -1;
 
             if (newMode == Mode.Thrown || newMode == Mode.Free)
+            {
                 ChangeCollisionLayer(1);
+                stuckInObject = null;
+            }
             else ChangeCollisionLayer(0);
             if (newMode == Mode.StuckInWall)
             {

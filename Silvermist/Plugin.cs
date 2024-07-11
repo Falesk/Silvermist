@@ -10,7 +10,6 @@ namespace Silvermist
         public const string GUID = "falesk.silvermist";
         public const string Name = "Silvermist";
         public const string Version = "1.0";
-        public string modPath;
         public void Awake()
         {
             //Mod enable / disable
@@ -18,9 +17,6 @@ namespace Silvermist
             {
                 orig(self);
                 Register.RegisterValues();
-                foreach (ModManager.Mod mod in ModManager.ActiveMods)
-                    if (mod.id == GUID)
-                        modPath = mod.path;
             };
             On.RainWorld.OnModsDisabled += delegate (On.RainWorld.orig_OnModsDisabled orig, RainWorld self, ModManager.Mod[] newlyDisabledMods)
             {
@@ -77,6 +73,13 @@ namespace Silvermist
                     }
                 }
             }
+        }
+
+        public static Vector2 TrimmedAnchors(FAtlasElement element)
+        {
+            float anchorX = element.sourceRect.center.x / element.sourceSize.x;
+            float anchorY = (element.sourceSize.y - element.sourceRect.center.y) / element.sourceSize.y;
+            return new Vector2(anchorX, anchorY);
         }
     }
 }
