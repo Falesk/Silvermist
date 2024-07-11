@@ -48,7 +48,7 @@ namespace Silvermist
             };
             On.Player.Grabability += delegate (On.Player.orig_Grabability orig, Player self, PhysicalObject obj)
             {
-                if (obj is Nectar)
+                if (obj is Nectar nectar && nectar.diving == 0f)
                     return Player.ObjectGrabability.OneHand;
                 return orig(self, obj);
             };
