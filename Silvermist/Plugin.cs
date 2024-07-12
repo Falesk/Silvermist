@@ -49,6 +49,18 @@ namespace Silvermist
                 return orig(self, obj);
             };
             On.Player.GrabUpdate += Player_GrabUpdate;
+            On.SLOracleBehaviorHasMark.MoonConversation.AddEvents += delegate (On.SLOracleBehaviorHasMark.MoonConversation.orig_AddEvents orig, SLOracleBehaviorHasMark.MoonConversation self)
+            {
+                orig(self);
+                if (self.id == Conversation.ID.Moon_Misc_Item && self.describeItem == Register.NectarConv)
+                {
+                    if (self.myBehavior.rainWorld.inGameTranslator.currentLanguage == InGameTranslator.LanguageID.Russian)
+                        self.events.Add(new Conversation.TextEvent(self, 10, self.Translate("Прес качат, бегит, анжуманя"), 0));
+                    else self.events.Add(new Conversation.TextEvent(self, 10, self.Translate("Something about item"), 0));
+                    return;
+                }
+            };
+            On.SLOracleBehaviorHasMark.TypeOfMiscItem += (On.SLOracleBehaviorHasMark.orig_TypeOfMiscItem orig, SLOracleBehaviorHasMark self, PhysicalObject testItem) => (testItem is Nectar) ? Register.NectarConv : orig(self, testItem);
 
             //Icon
             On.ItemSymbol.SpriteNameForItem += (On.ItemSymbol.orig_SpriteNameForItem orig, AbstractPhysicalObject.AbstractObjectType itemType, int intData) => (itemType == Register.Nectar) ? "Symbol_Nectar" : orig(itemType, intData);
@@ -77,9 +89,9 @@ namespace Silvermist
 
         public static Vector2 TrimmedAnchors(FAtlasElement element)
         {
-            float anchorX = element.sourceRect.center.x / element.sourceSize.x;
-            float anchorY = (element.sourceSize.y - element.sourceRect.center.y) / element.sourceSize.y;
-            return new Vector2(anchorX, anchorY);
+            Vector2 anchors = element.sourceRect.center / element.sourceSize;
+            anchors.y = 1f - anchors.y;
+            return anchors;
         }
     }
 }

@@ -128,7 +128,7 @@ namespace Silvermist
                     else
                     {
                         float distance = Vector2.Distance(firstChunk.pos, StuckInChunk.pos);
-                        if (Vector2.Distance(firstChunk.pos, StuckInChunk.lastPos) < distance && distance > ((StuckInChunk.owner is Player) ? 10f : 20f))
+                        if (Vector2.Distance(firstChunk.pos, StuckInChunk.lastPos) < distance && distance > 10f)
                         {
                             float num = ((StuckInChunk.owner is Player) ? 5f : 3.5f) * (distance / 30f);
                             StuckInChunk.vel += Custom.DirVec(StuckInChunk.pos, firstChunk.pos) * num;
@@ -183,6 +183,7 @@ namespace Silvermist
             else if (mode == Mode.Free && grabbedBy.Count == 0)
             {
                 Droplets();
+                attachmentPos = firstChunk.pos;
                 ChangeMode(Mode.StuckInWall);
             }
         }
@@ -247,25 +248,25 @@ namespace Silvermist
             sLeaser.sprites[3].x = pos.x - camPos.x - 3f;
             sLeaser.sprites[3].y = pos.y - camPos.y + 4f;
 
-            float num = Mathf.Lerp(lastSwallow, swallowed, timeStacker);
+            float num1 = Mathf.Lerp(lastSwallow, swallowed, timeStacker);
             float num2 = (mode == Mode.StuckInCreature) ? 0.8f : 1f;
             float num3 = Mathf.Lerp(lastDiving, diving, timeStacker);
-            float subm = (diving > 0) ? 1f + 0.25f * num3 : 1f;
-            sLeaser.sprites[0].scale = num * num2 * subm;
-            sLeaser.sprites[1].scaleX = 1.3f * num * num2 * subm;
-            sLeaser.sprites[1].scaleY = 1.1f * num * num2 * subm;
-            sLeaser.sprites[2].scale = num * num2 * subm;
-            sLeaser.sprites[3].scale = 1.1f * num * num2 * subm;
+            float subm = ((diving > 0) ? 1f + 0.25f * num3 : 1f) * num1 * num2;
+            sLeaser.sprites[0].scale = subm;
+            sLeaser.sprites[1].scaleX = 1.3f * subm;
+            sLeaser.sprites[1].scaleY = 1.1f * subm;
+            sLeaser.sprites[2].scale = subm;
+            sLeaser.sprites[3].scale = 1.1f * subm;
 
             if (mode == Mode.StuckInWall && stuckInObject != null)
             {
                 Vector2 v = StuckInChunk.pos - pos;
                 float angR = Mathf.Acos(v.x / v.magnitude) + ((v.y > 0) ? 0f : 2f * Mathf.Acos(-v.x / v.magnitude));
                 float dist = Vector2.Distance(pos, StuckInChunk.pos);
-                sLeaser.sprites[0].x = pos.x - camPos.x + 3f * Mathf.Cos(angR) * (dist / 30f);
-                sLeaser.sprites[0].y = pos.y - camPos.y + 3f * Mathf.Sin(angR) * (dist / 30f);
+                sLeaser.sprites[0].x = pos.x - camPos.x + 5f * Mathf.Cos(angR) * (dist / 30f);
+                sLeaser.sprites[0].y = pos.y - camPos.y + 5f * Mathf.Sin(angR) * (dist / 30f);
                 sLeaser.sprites[0].rotation = -angR * 180f / Mathf.PI;
-                sLeaser.sprites[0].scaleX = 1f + (dist / 40f);
+                sLeaser.sprites[0].scaleX = 1f + (dist / 30f);
             }
 
             if (glimmer != 0f && diving == 0f)
@@ -283,8 +284,8 @@ namespace Silvermist
 
             if (diving > 0f)
             {
-                for (int i = 0; i < sLeaser.sprites.Length - 2; i++)
-                    sLeaser.sprites[i].color = Color.Lerp(sLeaser.sprites[i].color, rCam.PixelColorAtCoordinate(pos), num3);
+                for (int i = 0; i < sLeaser.sprites.Length - 1; i++)
+                    sLeaser.sprites[i].color = Custom.RGB2RGBA(Color.Lerp(sLeaser.sprites[i].color, rCam.PixelColorAtCoordinate(pos), num3), 1f - 0.5f * num3);
                 sLeaser.sprites[0].isVisible = false;
             }
             if (slatedForDeletetion || rCam.room != room)
@@ -328,6 +329,31 @@ namespace Silvermist
             ChangeMode(Mode.Free);
         }
 
+        public override void RecreateSticksFromAbstract()
+        {
+            foreach (var apo in abstractPhysicalObject.stuckObjects)
+            {
+                if (apo is AbstractPhysicalObject.AbstractSpearStick abstr && abstr.Spear == abstractPhysicalObject && abstr.LodgedIn.realizedObject != null)
+                {
+                    stuckInObject = abstr.LodgedIn.realizedObject;
+                    stuckInChunkIndex = abstr.chunk;
+                    ChangeMode(Mode.StuckInCreature);
+                }
+            }
+        }
+
+        public void PulledOutOfStuckObject()
+        {
+            foreach (var stuckObject in abstractPhysicalObject.stuckObjects)
+                if (stuckObject is AbstractPhysicalObject.AbstractSpearStick abstr && abstr.Spear == abstractPhysicalObject)
+                {
+                    abstr.Deactivate();
+                    break;
+                }
+            stuckInObject = null;
+            stuckInChunkIndex = 0;
+        }
+
         public static float SwallowedChange(float swallowed, bool growth)
         {
             if (swallowed == 1f && !growth)
@@ -344,7 +370,10 @@ namespace Silvermist
             if (newMode == mode)
                 return;
             if (mode == Mode.StuckInCreature)
-                stuckInObject = null;
+            {
+                room?.PlaySound(SoundID.Spear_Dislodged_From_Creature, firstChunk, false, 0.8f, 1.2f);
+                PulledOutOfStuckObject();
+            }
             if (newMode == Mode.StuckInCreature || newMode == Mode.StuckInWall)
                 timeSinceAttachment = 0;
             else timeSinceAttachment = -1;
@@ -360,7 +389,6 @@ namespace Silvermist
                 if (mode == Mode.Free)
                     releaseCounter = 60;
                 else releaseCounter = 0;
-                attachmentPos = attachmentPos ?? firstChunk.pos;
             }
             if (newMode != Mode.StuckInWall && newMode != Mode.StuckInCreature)
                 attachmentPos = null;
@@ -373,11 +401,11 @@ namespace Silvermist
         public bool AutomaticPickUp => true;
         public BodyChunk StuckInChunk => stuckInObject.bodyChunks[stuckInChunkIndex];
         public Mode mode;
+        public PhysicalObject stuckInObject;
+        public PhysicalObject lastGrabbed;
         public Vector2 rotation;
         public Vector2 lastRotation;
         public Vector2? attachmentPos;
-        public PhysicalObject stuckInObject;
-        public PhysicalObject lastGrabbed;
         public float darkness;
         public float lastDarkness;
         public float glimmer;
