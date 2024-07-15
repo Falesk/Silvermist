@@ -1,4 +1,5 @@
 ﻿using BepInEx;
+using DevInterface;
 using System.Linq;
 using UnityEngine;
 
@@ -16,13 +17,13 @@ namespace Silvermist
             On.RainWorld.OnModsInit += delegate (On.RainWorld.orig_OnModsInit orig, RainWorld self)
             {
                 orig(self);
-                Register.RegisterValues();
+                Register.RegisterAll();
             };
             On.RainWorld.OnModsDisabled += delegate (On.RainWorld.orig_OnModsDisabled orig, RainWorld self, ModManager.Mod[] newlyDisabledMods)
             {
                 orig(self, newlyDisabledMods);
                 if (newlyDisabledMods.Any(mod => mod.id == GUID))
-                    Register.UnregisterValues();
+                    Register.UnregisterAll();
             };
             On.RainWorld.LoadModResources += delegate (On.RainWorld.orig_LoadModResources orig, RainWorld self)
             {
@@ -39,8 +40,10 @@ namespace Silvermist
             On.AbstractPhysicalObject.Realize += delegate (On.AbstractPhysicalObject.orig_Realize orig, AbstractPhysicalObject self)
             {
                 orig(self);
-                if (self.type == Register.Nectar)
+                if (self.type == Register.ObjectTypes.Nectar)
                     self.realizedObject = new Nectar(self);
+                else if (self.type == Register.ObjectTypes.Silvermist)
+                    self.realizedObject = new Silvermist(self);
             };
             On.Player.Grabability += delegate (On.Player.orig_Grabability orig, Player self, PhysicalObject obj)
             {
@@ -52,7 +55,7 @@ namespace Silvermist
             On.SLOracleBehaviorHasMark.MoonConversation.AddEvents += delegate (On.SLOracleBehaviorHasMark.MoonConversation.orig_AddEvents orig, SLOracleBehaviorHasMark.MoonConversation self)
             {
                 orig(self);
-                if (self.id == Conversation.ID.Moon_Misc_Item && self.describeItem == Register.NectarConv)
+                if (self.id == Conversation.ID.Moon_Misc_Item && self.describeItem == Register.OracleConvos.Nectar)
                 {
                     if (self.myBehavior.rainWorld.inGameTranslator.currentLanguage == InGameTranslator.LanguageID.Russian)
                         self.events.Add(new Conversation.TextEvent(self, 10, self.Translate("Прес качат, бегит, анжуманя"), 0));
@@ -60,12 +63,116 @@ namespace Silvermist
                     return;
                 }
             };
-            On.SLOracleBehaviorHasMark.TypeOfMiscItem += (On.SLOracleBehaviorHasMark.orig_TypeOfMiscItem orig, SLOracleBehaviorHasMark self, PhysicalObject testItem) => (testItem is Nectar) ? Register.NectarConv : orig(self, testItem);
+            On.SLOracleBehaviorHasMark.TypeOfMiscItem += (On.SLOracleBehaviorHasMark.orig_TypeOfMiscItem orig, SLOracleBehaviorHasMark self, PhysicalObject testItem) => (testItem is Nectar) ? Register.OracleConvos.Nectar : orig(self, testItem);
 
             //Icon
-            On.ItemSymbol.SpriteNameForItem += (On.ItemSymbol.orig_SpriteNameForItem orig, AbstractPhysicalObject.AbstractObjectType itemType, int intData) => (itemType == Register.Nectar) ? "Symbol_Nectar" : orig(itemType, intData);
-            On.ItemSymbol.ColorForItem += (On.ItemSymbol.orig_ColorForItem orig, AbstractPhysicalObject.AbstractObjectType itemType, int intData) => (itemType == Register.Nectar) ? new Color(0.93f, 0.56f, 0.53f) : orig(itemType, intData);
+            On.ItemSymbol.SpriteNameForItem += delegate (On.ItemSymbol.orig_SpriteNameForItem orig, AbstractPhysicalObject.AbstractObjectType itemType, int intData)
+            {
+                if (itemType == Register.ObjectTypes.Nectar)
+                    return "Symbol_Nectar";
+                if (itemType == Register.ObjectTypes.Silvermist)
+                    return "Symbol_Silvermist";
+                return orig(itemType, intData);
+            };
+            On.ItemSymbol.ColorForItem += delegate (On.ItemSymbol.orig_ColorForItem orig, AbstractPhysicalObject.AbstractObjectType itemType, int intData)
+            {
+                if (itemType == Register.ObjectTypes.Nectar)
+                    return new Color(0.93f, 0.56f, 0.53f);
+                if (itemType == Register.ObjectTypes.Silvermist)
+                    return new Color(0.93f, 0.56f, 0.53f);
+                return orig(itemType, intData);
+            };
+
+            //Placed Object
+            On.PlacedObject.GenerateEmptyData += delegate (On.PlacedObject.orig_GenerateEmptyData orig, PlacedObject self)
+            {
+                orig(self);
+                if (self.type == Register.PlacedObjectTypes.Silvermist)
+                    self.data = new PlacedObject.ConsumableObjectData(self);
+            };
+            On.PlacedObject.ConsumableObjectData.ctor += delegate (On.PlacedObject.ConsumableObjectData.orig_ctor orig, PlacedObject.ConsumableObjectData self, PlacedObject owner)
+            {
+                if (owner.type == Register.PlacedObjectTypes.Silvermist)
+                {
+                    self.minRegen = 1;
+                    self.maxRegen = 1;
+                }
+                else orig(self, owner);
+            };
+            On.DevInterface.ObjectsPage.CreateObjRep += delegate (On.DevInterface.ObjectsPage.orig_CreateObjRep orig, ObjectsPage self, PlacedObject.Type tp, PlacedObject pObj)
+            {
+                if (tp == Register.PlacedObjectTypes.Silvermist)
+                {
+                    if (pObj == null)
+                    {
+                        pObj = new PlacedObject(tp, null)
+                        { pos = self.owner.room.game.cameras[0].pos + Vector2.Lerp(self.owner.mousePos, new Vector2(-683f, 384f), 0.25f) + RWCustom.Custom.DegToVec(Random.value * 360f) * 0.2f };
+                        self.RoomSettings.placedObjects.Add(pObj);
+                    }
+                    PlacedObjectRepresentation por = new ConsumableRepresentation(self.owner, tp.ToString() + "_Rep", self, pObj, tp.ToString());
+                    self.tempNodes.Add(por);
+                    self.subNodes.Add(por);
+                }
+                else orig(self, tp, pObj);
+            };
+            On.DevInterface.ObjectsPage.DevObjectGetCategoryFromPlacedType += delegate (On.DevInterface.ObjectsPage.orig_DevObjectGetCategoryFromPlacedType orig, ObjectsPage self, PlacedObject.Type type)
+            {
+                if (type == Register.PlacedObjectTypes.Silvermist)
+                    return ObjectsPage.DevObjectCategories.Consumable;
+                return orig(self, type);
+            };
+            //IL.Room.Loaded += Room_Loaded;
+            On.Room.Loaded += Room_Loaded;
         }
+
+        private void Room_Loaded(On.Room.orig_Loaded orig, Room self)
+        {
+            if (self.game == null) return;
+            foreach (PlacedObject po in self.roomSettings.placedObjects)
+            {
+                if (po.active && po.type == Register.PlacedObjectTypes.Silvermist && self.abstractRoom.firstTimeRealized)
+                {
+                    AbstractPhysicalObject abstr = new AbstractPhysicalObject(self.world, Register.ObjectTypes.Silvermist, null, self.GetWorldCoordinate(po.pos), self.game.GetNewID());
+                    self.abstractRoom.entities.Add(abstr);
+                    break;
+                }
+            }
+            orig(self);
+        }
+
+        //private void Room_Loaded(ILContext il)
+        //{
+        //    try
+        //    {
+        //        ILCursor c = new ILCursor(il);
+        //        c.GotoNext(MoveType.After,
+        //            x => x.MatchLdarg(0),
+        //            x => x.MatchCallOrCallvirt(typeof(Room).GetMethod("get_abstractRoom")),
+        //            x => x.MatchLdfld(typeof(AbstractRoom).GetField(nameof(AbstractRoom.entities))),
+        //            x => x.MatchLdloc(62),
+        //            x => x.MatchCallOrCallvirt(typeof(List<AbstractWorldEntity>).GetMethod(nameof(List<AbstractWorldEntity>.Add))),
+        //            x => x.Match(OpCodes.Br)
+        //            );
+
+        //        int num = (int)(new ILCursor(il).GotoNext(MoveType.After, x => x.MatchLdloc(43)).Instrs[0].Operand);
+        //        flag = num;
+
+        //        c.MoveAfterLabels();
+        //        c.Emit(OpCodes.Ldarg_0);
+
+        //        c.EmitDelegate<Action<Room>>((Room self) =>
+        //        {
+        //            Debug.Log($"{num} - num");
+        //            if (self.roomSettings.placedObjects[num].type == Register.PlacedObjectTypes.Silvermist)
+        //            {
+        //                PlacedObject po = self.roomSettings.placedObjects[num];
+        //                AbstractPhysicalObject abstr = new AbstractPhysicalObject(self.world, Register.ObjectTypes.Silvermist, null, self.GetWorldCoordinate(po.pos), self.game.GetNewID());
+        //                self.abstractRoom.entities.Add(abstr);
+        //            }
+        //        });
+        //    }
+        //    catch (Exception ex) { Debug.LogException(ex); }
+        //}
 
         private void Player_GrabUpdate(On.Player.orig_GrabUpdate orig, Player self, bool eu)
         {

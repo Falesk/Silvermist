@@ -1,5 +1,4 @@
-﻿using HUD;
-using RWCustom;
+﻿using RWCustom;
 using System.Linq;
 using UnityEngine;
 using Mode = Weapon.Mode;
@@ -8,6 +7,15 @@ namespace Silvermist
 {
     public class Nectar : PlayerCarryableItem, IDrawable, IPlayerEdible
     {
+        public BodyChunk StuckInChunk => stuckInObject.bodyChunks[stuckInChunkIndex];
+        public Mode mode;
+        public PhysicalObject stuckInObject;
+        public Vector2 rotation, lastRotation;
+        public Vector2? attachmentPos;
+        public float darkness, lastDarkness, glimmer, lastGlimmer, swallowed, lastSwallow, diving, lastDiving;
+        public int lastGlimmerTime, jellySprite, releaseCounter, stuckInChunkIndex, timeSinceAttachment;
+        public bool tracked;
+
         public Nectar(AbstractPhysicalObject abstr) : base(abstr)
         {
             bodyChunks = new BodyChunk[] { new BodyChunk(this, 0, Vector2.zero, 5, 0.05f) };
@@ -39,7 +47,6 @@ namespace Silvermist
             lastRotation = rotation;
             if (grabbedBy.Count > 0)
             {
-                lastGrabbed = grabbedBy[0].grabber;
                 rotation = Custom.PerpendicularVector(Custom.DirVec(firstChunk.pos, grabbedBy[0].grabber.mainBodyChunk.pos));
                 rotation.y = Mathf.Abs(rotation.y);
             }
@@ -63,16 +70,6 @@ namespace Silvermist
             if (timeSinceAttachment > -1)
                 timeSinceAttachment += (timeSinceAttachment < 400) ? 1 : 0;
 
-            if (ModManager.MSC && MoreSlugcats.MMF.cfgCreatureSense.Value && room.world.game.IsStorySession)
-            {
-                MoreSlugcats.PersistentObjectTracker tracker = new MoreSlugcats.PersistentObjectTracker(abstractPhysicalObject);
-                Map map = room.world.game.cameras[0].hud.map;
-                if (!map.mapData.objectTrackers.Any(tr => tr.obj.ID == abstractPhysicalObject.ID && tr.obj.type == Register.Nectar))
-                    map.addTracker(tracker);
-                else if (map.mapData.objectTrackers.Any(tr => tr.obj.Room != abstractPhysicalObject.Room && tr.obj.ID == abstractPhysicalObject.ID && tr.obj.type == Register.Nectar))
-                    map.removeTracker(tracker);
-            }
-
             lastSwallow = swallowed;
             bool flag = grabbedBy.Count > 0 && grabbedBy[0]?.grabber is Player player && player.input[0].pckp &&
                 ((player.grasps[0]?.grabbed is Nectar nectar && nectar.abstractPhysicalObject.ID == abstractPhysicalObject.ID) ||
@@ -89,14 +86,14 @@ namespace Silvermist
                 Vector2 vector2 = default;
                 if (floatRect != null)
                     vector2 = new Vector2(floatRect.Value.left, floatRect.Value.bottom);
-                SharedPhysics.CollisionResult collisionResult = SharedPhysics.TraceProjectileAgainstBodyChunks(null, room, pos, ref vector, 1f, 1, lastGrabbed, false);
+                SharedPhysics.CollisionResult collisionResult = SharedPhysics.TraceProjectileAgainstBodyChunks(null, room, pos, ref vector, 1f, 1, null, false);
                 if (floatRect != null && collisionResult.chunk != null)
                 {
                     if (Vector2.Distance(pos, new Vector2(floatRect.Value.left, floatRect.Value.bottom)) < Vector2.Distance(pos, collisionResult.collisionPoint))
                         collisionResult.chunk = null;
                     else floatRect = null;
                 }
-                if (collisionResult.chunk != null && collisionResult.chunk.owner is Creature && collisionResult.chunk.owner != lastGrabbed)
+                if (collisionResult.chunk != null && collisionResult.chunk.owner is Creature)
                 {
                     Droplets();
                     attachmentPos = vector2 + Custom.DirVec(vector2, pos) * 15f;
@@ -399,26 +396,5 @@ namespace Silvermist
         public int FoodPoints => 0;
         public bool Edible => true;
         public bool AutomaticPickUp => true;
-        public BodyChunk StuckInChunk => stuckInObject.bodyChunks[stuckInChunkIndex];
-        public Mode mode;
-        public PhysicalObject stuckInObject;
-        public PhysicalObject lastGrabbed;
-        public Vector2 rotation;
-        public Vector2 lastRotation;
-        public Vector2? attachmentPos;
-        public float darkness;
-        public float lastDarkness;
-        public float glimmer;
-        public float lastGlimmer;
-        public float swallowed;
-        public float lastSwallow;
-        public float diving;
-        public float lastDiving;
-        public int lastGlimmerTime;
-        public int jellySprite;
-        public int releaseCounter;
-        public int stuckInChunkIndex;
-        public int timeSinceAttachment;
-        public bool tracked;
     }
 }
