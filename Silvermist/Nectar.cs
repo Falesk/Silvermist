@@ -14,7 +14,6 @@ namespace Silvermist
         public Vector2? attachmentPos;
         public float darkness, lastDarkness, glimmer, lastGlimmer, swallowed, lastSwallow, diving, lastDiving;
         public int lastGlimmerTime, jellySprite, releaseCounter, stuckInChunkIndex, timeSinceAttachment;
-        public bool tracked;
 
         public Nectar(AbstractPhysicalObject abstr) : base(abstr)
         {

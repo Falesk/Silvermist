@@ -123,18 +123,27 @@ namespace Silvermist
             };
             //IL.Room.Loaded += Room_Loaded;
             On.Room.Loaded += Room_Loaded;
+            On.AbstractConsumable.IsTypeConsumable += (On.AbstractConsumable.orig_IsTypeConsumable orig, AbstractPhysicalObject.AbstractObjectType type) => type == Register.ObjectTypes.Silvermist || orig(type);
         }
 
         private void Room_Loaded(On.Room.orig_Loaded orig, Room self)
         {
-            if (self.game == null) return;
+            if (self.game == null)
+                return;
             foreach (PlacedObject po in self.roomSettings.placedObjects)
             {
                 if (po.active && po.type == Register.PlacedObjectTypes.Silvermist && self.abstractRoom.firstTimeRealized)
                 {
-                    AbstractPhysicalObject abstr = new AbstractPhysicalObject(self.world, Register.ObjectTypes.Silvermist, null, self.GetWorldCoordinate(po.pos), self.game.GetNewID());
+                    AbstractConsumable abstr = new AbstractConsumable(
+                        self.world,
+                        Register.ObjectTypes.Silvermist,
+                        null,
+                        self.GetWorldCoordinate(po.pos),
+                        self.game.GetNewID(),
+                        self.abstractRoom.index,
+                        self.roomSettings.placedObjects.IndexOf(po),
+                        po.data as PlacedObject.ConsumableObjectData);
                     self.abstractRoom.entities.Add(abstr);
-                    break;
                 }
             }
             orig(self);
