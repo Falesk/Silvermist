@@ -8,10 +8,13 @@ namespace Silvermist
     public class Silvermist : PhysicalObject, IDrawable
     {
         public Vector2 placedPos, rootPos;
+        public Vector2[,] stalkSegments;
+        public Color color;
         public float darkness, lastDarkness;
-        public int isthmusSprite;
+        public int stalkSegs;
+        public bool twilight;
         public AbstractConsumable AbstractSilvermist => abstractPhysicalObject as AbstractConsumable;
-        public int TotalSprites => 1 + isthmusSprite * 2;
+        public int TotalSprites => 1;
 
         public Silvermist(AbstractPhysicalObject abstr) : base(abstr)
         {
@@ -26,7 +29,12 @@ namespace Silvermist
             buoyancy = 0.1f;
             Random.State state = Random.state;
             Random.InitState(abstr.ID.RandomSeed);
-            isthmusSprite = Random.Range(8, 15);
+            stalkSegments = new Vector2[Random.Range(8, 15), 2];
+            SetSegs(stalkSegments);
+            stalkSegs = stalkSegments.GetLength(0);
+            if (twilight)
+                color = Custom.HSL2RGB(Custom.WrappedRandomVariation(0.8f, 0.05f, 0.6f), 1f, Custom.ClampedRandomVariation(0.5f, 0.15f, 0.1f));
+            else color = Custom.HSL2RGB(Mathf.Lerp(0f, 0.167f, Random.value), 1f, Custom.ClampedRandomVariation(0.5f, 0.15f, 0.1f));
             Random.state = state;
         }
 
@@ -85,14 +93,28 @@ namespace Silvermist
             firstChunk.HardSetPosition(new Vector2(rootPos.x, rootPos.y + 10f));
         }
 
+        public void SetSegs(Vector2[,] segs)
+        {
+            Vector2 lastV = Vector2.up;
+            Vector2 slope = lastV;
+            for (int i = 0; i < segs.GetLength(0); i++)
+            {
+                float ctan = slope.x / slope.y;
+                float num = 0f;
+                if (ctan > 0.36f) num = -0.3f;
+                else if (ctan < -0.36f) num = 0.3f;
+                else if (Mathf.Abs(ctan) > 0.2f) num = Mathf.Lerp(0f, ctan / 3f, Random.value);
+                segs[i, 0] = (lastV + new Vector2(Mathf.Lerp(-0.2f + num, 0.2f + num, Random.value), 0f)).normalized;
+                segs[i, 1] *= 0f;
+                lastV = segs[i, 0];
+                slope = (slope + lastV).normalized;
+            }
+        }
+
         public void InitiateSprites(RoomCamera.SpriteLeaser sLeaser, RoomCamera rCam)
         {
-            sLeaser.sprites = new FSprite[TotalSprites];
-            for (int i = 0; i < isthmusSprite; i++)
-                sLeaser.sprites[i] = new FSprite("pixel") { scaleY = 15f, scaleX = 2f };
-            for (int i = isthmusSprite; i < TotalSprites - 1; i++)
-                sLeaser.sprites[i] = new FSprite("Circle20") { scale = 0.3f };
-            sLeaser.sprites[TotalSprites - 1] = new FSprite("Circle20") { scale = 0.5f };
+            sLeaser.sprites = new FSprite[1];
+            sLeaser.sprites[0] = TriangleMesh.MakeLongMesh(stalkSegs, false, true);
             AddToContainer(sLeaser, rCam, null);
         }
 
@@ -104,33 +126,39 @@ namespace Silvermist
             if (darkness != lastDarkness)
                 ApplyPalette(sLeaser, rCam, rCam.currentPalette);
 
-            for (int i = 0; i < isthmusSprite; i++)
+            TriangleMesh mesh = sLeaser.sprites[0] as TriangleMesh;
+            Vector2 prevTilt = new Vector2(2.5f, 0f);
+            Vector2 point = rootPos - camPos;
+            for (int i = 0; i < stalkSegs; i++)
             {
-                sLeaser.sprites[i].x = rootPos.x - camPos.x;
-                sLeaser.sprites[i].y = rootPos.y - camPos.y + i * 15f + 7.5f;
+                float num = Mathf.Lerp(5f, 0f, i / (float)(stalkSegs - 1));
+                Vector2 v = stalkSegments[i, 0];
+                Vector2 t = 0.5f * num * v;
+                mesh.MoveVertice(i * 4 + 0, point + v * 15f + new Vector2(t.x, -t.y));
+                mesh.MoveVertice(i * 4 + 1, point + v * 15f + new Vector2(-t.x, t.y));
+                mesh.MoveVertice(i * 4 + 2, point + prevTilt);
+                mesh.MoveVertice(i * 4 + 3, point - prevTilt);
+                prevTilt = new Vector2(v.y, -v.x);
+                point += v * 15f;
             }
-            for (int i = isthmusSprite; i < TotalSprites - 1; i++)
-            {
-                sLeaser.sprites[i].x = rootPos.x - camPos.x;
-                sLeaser.sprites[i].y = rootPos.y - camPos.y + (i - (isthmusSprite - 1)) * 15f;
-            }
-            sLeaser.sprites[TotalSprites - 1].x = rootPos.x - camPos.x;
-            sLeaser.sprites[TotalSprites - 1].y = rootPos.y - camPos.y;
+
             if (slatedForDeletetion || rCam.room != room)
                 sLeaser.CleanSpritesAndRemove();
         }
 
         public void ApplyPalette(RoomCamera.SpriteLeaser sLeaser, RoomCamera rCam, RoomPalette palette)
         {
-            for (int i = 0; i < isthmusSprite; i++)
-                sLeaser.sprites[i].color = Color.Lerp(new Color(0f, i / (float)(isthmusSprite - 1), 0.2f), palette.blackColor, darkness);
-            for (int i = isthmusSprite; i < TotalSprites; i++)
-                sLeaser.sprites[i].color = Color.Lerp(Color.red, palette.blackColor, darkness);
+            TriangleMesh mesh = sLeaser.sprites[0] as TriangleMesh;
+            for (int i = 0; i < mesh.verticeColors.Length; i++)
+            {
+                float num = (i / 4 + ((i % 4 < 2) ? 1 : 0)) / (float)stalkSegs;
+                mesh.verticeColors[i] = Color.Lerp(Color.Lerp(palette.blackColor + color * 0.05f, color, num), palette.blackColor, darkness);
+            }
         }
 
         public void AddToContainer(RoomCamera.SpriteLeaser sLeaser, RoomCamera rCam, FContainer newContatiner)
         {
-            newContatiner = newContatiner ?? rCam.ReturnFContainer("Items");
+            newContatiner = newContatiner ?? rCam.ReturnFContainer("Background");
             foreach (FSprite sprite in sLeaser.sprites)
             {
                 sprite.RemoveFromContainer();
