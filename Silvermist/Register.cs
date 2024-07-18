@@ -2,12 +2,27 @@
 {
     public static class Register
     {
+        public static void RegisterAll()
+        {
+            ObjectTypes.RegisterValues();
+            OracleConvos.RegisterValues();
+            PlacedObjectTypes.RegisterValues();
+        }
+
+        public static void UnregisterAll()
+        {
+            ObjectTypes.UnregisterValues();
+            OracleConvos.UnregisterValues();
+            PlacedObjectTypes.UnregisterValues();
+        }
+
         public static class ObjectTypes
         {
             public static void RegisterValues()
             {
                 Nectar = new AbstractPhysicalObject.AbstractObjectType("Nectar", true);
                 Silvermist = new AbstractPhysicalObject.AbstractObjectType("Silvermist", true);
+                DebugObj = new AbstractPhysicalObject.AbstractObjectType("DebugObj", true);
             }
 
             public static void UnregisterValues()
@@ -19,10 +34,15 @@
                 AbstractPhysicalObject.AbstractObjectType silvermist = Silvermist;
                 silvermist?.Unregister();
                 Silvermist = null;
+
+                AbstractPhysicalObject.AbstractObjectType debugObj = DebugObj;
+                debugObj?.Unregister();
+                DebugObj = null;
             }
 
             public static AbstractPhysicalObject.AbstractObjectType Nectar;
             public static AbstractPhysicalObject.AbstractObjectType Silvermist;
+            public static AbstractPhysicalObject.AbstractObjectType DebugObj;
         }
 
         public static class OracleConvos
@@ -57,20 +77,6 @@
             }
 
             public static PlacedObject.Type Silvermist;
-        }
-
-        public static void RegisterAll()
-        {
-            ObjectTypes.RegisterValues();
-            OracleConvos.RegisterValues();
-            PlacedObjectTypes.RegisterValues();
-        }
-
-        public static void UnregisterAll()
-        {
-            ObjectTypes.UnregisterValues();
-            OracleConvos.UnregisterValues();
-            PlacedObjectTypes.UnregisterValues();
         }
     }
 }

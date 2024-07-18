@@ -29,11 +29,23 @@ namespace Silvermist
             {
                 orig(self);
                 Futile.atlasManager.LoadAtlas("assets/sprites");
+                for (int i = 1; i <= 10; i++)
+                {
+                    Futile.atlasManager.LoadImage($"assets/silvermist{i}leaf");
+                    Futile.atlasManager.LoadImage($"assets/silvermist{i}leaf2");
+                    Futile.atlasManager.GetElementWithName($"assets/silvermist{i}leaf").name = $"Silvermist{i}leaf";
+                    Futile.atlasManager.GetElementWithName($"assets/silvermist{i}leaf2").name = $"Silvermist{i}leaf2";
+                }
             };
             On.RainWorld.UnloadResources += delegate (On.RainWorld.orig_UnloadResources orig, RainWorld self)
             {
                 orig(self);
                 Futile.atlasManager.UnloadAtlas("assets/sprites");
+                for (int i = 1; i <= 10; i++)
+                {
+                    Futile.atlasManager.UnloadImage($"assets/silvermist{i}leaf");
+                    Futile.atlasManager.UnloadImage($"assets/silvermist{i}leaf2");
+                }
             };
 
             //Main

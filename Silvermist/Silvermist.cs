@@ -11,10 +11,10 @@ namespace Silvermist
         public Vector2[,] stalkSegments;
         public Color color;
         public float darkness, lastDarkness;
-        public int stalkSegs;
+        public int stalkSegs, leaves;
         public bool twilight;
         public AbstractConsumable AbstractSilvermist => abstractPhysicalObject as AbstractConsumable;
-        public int TotalSprites => 1;
+        public int TotalSprites => 11 + leaves * 2;
 
         public Silvermist(AbstractPhysicalObject abstr) : base(abstr)
         {
@@ -30,11 +30,12 @@ namespace Silvermist
             Random.State state = Random.state;
             Random.InitState(abstr.ID.RandomSeed);
             stalkSegments = new Vector2[Random.Range(8, 15), 2];
-            SetSegs(stalkSegments);
             stalkSegs = stalkSegments.GetLength(0);
+            SetSegs(stalkSegments);
             if (twilight)
                 color = Custom.HSL2RGB(Custom.WrappedRandomVariation(0.8f, 0.05f, 0.6f), 1f, Custom.ClampedRandomVariation(0.5f, 0.15f, 0.1f));
             else color = Custom.HSL2RGB(Mathf.Lerp(0f, 0.167f, Random.value), 1f, Custom.ClampedRandomVariation(0.5f, 0.15f, 0.1f));
+            leaves = Random.Range(4, 8);
             Random.state = state;
         }
 
@@ -113,8 +114,40 @@ namespace Silvermist
 
         public void InitiateSprites(RoomCamera.SpriteLeaser sLeaser, RoomCamera rCam)
         {
-            sLeaser.sprites = new FSprite[1];
+            sLeaser.sprites = new FSprite[1]; //TotalSprites
             sLeaser.sprites[0] = TriangleMesh.MakeLongMesh(stalkSegs, false, true);
+            //float num = 90f;
+            //for (int i = 1; i < 6; i++)
+            //{
+            //    int r = Random.Range(1, 11);
+            //    foreach (var item in Futile.atlasManager._allElementsByName)
+            //    {
+            //        if (item.Value.name.Contains($"Silvermist{r}leaf2"))
+            //            sLeaser.sprites[i + 5] = new FSprite(item.Value) { anchorX = 0f, anchorY = 0f, scale = stalkSegs / 16f };
+            //        else if (item.Value.name.Contains($"Silvermist{r}leaf"))
+            //            sLeaser.sprites[i] = new FSprite(item.Value) { anchorX = 0f, anchorY = 0f, scale = stalkSegs / 16f };
+            //    }
+            //    float rt = (num < 100f) ? Mathf.Lerp(num - 60f, num, Random.value) : Mathf.Lerp(num, num + 60f, Random.value);
+            //    sLeaser.sprites[i + 5].rotation = rt;
+            //    sLeaser.sprites[i].rotation = rt;
+            //    num += 180f;
+            //}
+            //num = 90f;
+            //for (int i = 11; i < 11 + leaves; i++)
+            //{
+            //    int r = Random.Range(1, 11);
+            //    foreach (var item in Futile.atlasManager._allElementsByName)
+            //    {
+            //        if (item.Value.name.Contains($"Silvermist{r}leaf2"))
+            //            sLeaser.sprites[i + leaves] = new FSprite(item.Value) { anchorX = 0f, anchorY = 0f, scale = stalkSegs / 14f };
+            //        else if (item.Value.name.Contains($"Silvermist{r}leaf"))
+            //            sLeaser.sprites[i] = new FSprite(item.Value) { anchorX = 0f, anchorY = 0f, scale = stalkSegs / 14f };
+            //    }
+            //    float rt = (num < 100f) ? Mathf.Lerp(num - 60f, num, Random.value) : Mathf.Lerp(num, num + 60f, Random.value);
+            //    sLeaser.sprites[i + leaves].rotation = rt;
+            //    sLeaser.sprites[i].rotation = rt;
+            //    num += 180f;
+            //}
             AddToContainer(sLeaser, rCam, null);
         }
 
@@ -134,13 +167,19 @@ namespace Silvermist
                 float num = Mathf.Lerp(5f, 0f, i / (float)(stalkSegs - 1));
                 Vector2 v = stalkSegments[i, 0];
                 Vector2 t = 0.5f * num * v;
-                mesh.MoveVertice(i * 4 + 0, point + v * 15f + new Vector2(t.x, -t.y));
-                mesh.MoveVertice(i * 4 + 1, point + v * 15f + new Vector2(-t.x, t.y));
+                mesh.MoveVertice(i * 4 + 0, point + v * 15f + new Vector2(t.y, -t.x));
+                mesh.MoveVertice(i * 4 + 1, point + v * 15f + new Vector2(-t.y, t.x));
                 mesh.MoveVertice(i * 4 + 2, point + prevTilt);
                 mesh.MoveVertice(i * 4 + 3, point - prevTilt);
                 prevTilt = new Vector2(v.y, -v.x);
                 point += v * 15f;
             }
+
+            //for (int i = 1; i < TotalSprites; i++)
+            //{
+            //    sLeaser.sprites[i].x = rootPos.x - camPos.x + 2f;
+            //    sLeaser.sprites[i].y = rootPos.y - camPos.y;
+            //}
 
             if (slatedForDeletetion || rCam.room != room)
                 sLeaser.CleanSpritesAndRemove();
@@ -154,15 +193,39 @@ namespace Silvermist
                 float num = (i / 4 + ((i % 4 < 2) ? 1 : 0)) / (float)stalkSegs;
                 mesh.verticeColors[i] = Color.Lerp(Color.Lerp(palette.blackColor + color * 0.05f, color, num), palette.blackColor, darkness);
             }
+            //for (int i = 1; i < 6; i++)
+            //{
+            //    sLeaser.sprites[i].color = Color.Lerp(new Color(0.1f, 0.05f, 0.6f + Mathf.Lerp(-0.1f, 0.1f, Random.value)), palette.blackColor, darkness);
+            //    sLeaser.sprites[i + 5].color = Color.Lerp(new Color(0f, 0.9f + Mathf.Lerp(-0.1f, 0.1f, Random.value), 0f), palette.blackColor, darkness);
+            //}
+            //for (int i = 11; i < 11 + leaves; i++)
+            //{
+            //    sLeaser.sprites[i].color = Color.Lerp(new Color(0.3f, 0.1f, 0.7f + Mathf.Lerp(-0.1f, 0.1f, Random.value)), palette.blackColor, darkness);
+            //    sLeaser.sprites[i + leaves].color = Color.Lerp(new Color(0.1f, 0.9f + Mathf.Lerp(-0.1f, 0.1f, Random.value), 0f), palette.blackColor, darkness);
+            //}
         }
 
         public void AddToContainer(RoomCamera.SpriteLeaser sLeaser, RoomCamera rCam, FContainer newContatiner)
         {
             newContatiner = newContatiner ?? rCam.ReturnFContainer("Background");
             foreach (FSprite sprite in sLeaser.sprites)
-            {
                 sprite.RemoveFromContainer();
-                newContatiner.AddChild(sprite);
+            newContatiner.AddChild(sLeaser.sprites[0]);
+            for (int i = 0; i < TotalSprites; i++)
+                rCam.ReturnFContainer("Foreground").AddChild(sLeaser.sprites[i]);
+        }
+
+        public class Leaf
+        {
+            public Silvermist owner;
+            public Vector2 startDir;
+            public float size, thickness, rtPoint;
+
+            public Leaf(Silvermist owner, Vector2 direction, float size)
+            {
+                this.owner = owner;
+                startDir = direction;
+                this.size = size;
             }
         }
     }
