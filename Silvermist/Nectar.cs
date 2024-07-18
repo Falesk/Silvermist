@@ -211,7 +211,7 @@ namespace Silvermist
         public void InitiateSprites(RoomCamera.SpriteLeaser sLeaser, RoomCamera rCam)
         {
             var jelSpr = Futile.atlasManager.GetElementWithName($"Cicada{jellySprite}head");
-            Vector2 anchors = Plugin.TrimmedAnchors(jelSpr);
+            Vector2 anchors = FCustom.TrimmedAnchors(jelSpr);
 
             sLeaser.sprites = new FSprite[]
             {

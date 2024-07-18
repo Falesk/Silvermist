@@ -85,6 +85,8 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="DebugObj.cs" />
+    <Compile Include="FCustom.cs" />
     <Compile Include="Nectar.cs" />
     <Compile Include="Plugin.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

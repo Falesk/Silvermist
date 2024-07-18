@@ -29,23 +29,11 @@ namespace Silvermist
             {
                 orig(self);
                 Futile.atlasManager.LoadAtlas("assets/sprites");
-                for (int i = 1; i <= 10; i++)
-                {
-                    Futile.atlasManager.LoadImage($"assets/silvermist{i}leaf");
-                    Futile.atlasManager.LoadImage($"assets/silvermist{i}leaf2");
-                    Futile.atlasManager.GetElementWithName($"assets/silvermist{i}leaf").name = $"Silvermist{i}leaf";
-                    Futile.atlasManager.GetElementWithName($"assets/silvermist{i}leaf2").name = $"Silvermist{i}leaf2";
-                }
             };
             On.RainWorld.UnloadResources += delegate (On.RainWorld.orig_UnloadResources orig, RainWorld self)
             {
                 orig(self);
                 Futile.atlasManager.UnloadAtlas("assets/sprites");
-                for (int i = 1; i <= 10; i++)
-                {
-                    Futile.atlasManager.UnloadImage($"assets/silvermist{i}leaf");
-                    Futile.atlasManager.UnloadImage($"assets/silvermist{i}leaf2");
-                }
             };
 
             //Main
@@ -56,6 +44,8 @@ namespace Silvermist
                     self.realizedObject = new Nectar(self);
                 else if (self.type == Register.ObjectTypes.Silvermist)
                     self.realizedObject = new Silvermist(self);
+                else if (self.type == Register.ObjectTypes.DebugObj)
+                    self.realizedObject = new DebugObj(self);
             };
             On.Player.Grabability += delegate (On.Player.orig_Grabability orig, Player self, PhysicalObject obj)
             {
@@ -84,6 +74,8 @@ namespace Silvermist
                     return "Symbol_Nectar";
                 if (itemType == Register.ObjectTypes.Silvermist)
                     return "Symbol_Silvermist";
+                if (itemType == Register.ObjectTypes.DebugObj)
+                    return "Symbol_Nectar";
                 return orig(itemType, intData);
             };
             On.ItemSymbol.ColorForItem += delegate (On.ItemSymbol.orig_ColorForItem orig, AbstractPhysicalObject.AbstractObjectType itemType, int intData)
@@ -92,6 +84,8 @@ namespace Silvermist
                     return new Color(0.93f, 0.56f, 0.53f);
                 if (itemType == Register.ObjectTypes.Silvermist)
                     return new Color(0.93f, 0.56f, 0.53f);
+                if (itemType == Register.ObjectTypes.DebugObj)
+                    return Color.black;
                 return orig(itemType, intData);
             };
 
@@ -213,13 +207,6 @@ namespace Silvermist
                     }
                 }
             }
-        }
-
-        public static Vector2 TrimmedAnchors(FAtlasElement element)
-        {
-            Vector2 anchors = element.sourceRect.center / element.sourceSize;
-            anchors.y = 1f - anchors.y;
-            return anchors;
         }
     }
 }
