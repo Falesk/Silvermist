@@ -13,17 +13,74 @@ namespace Silvermist
 
         public static Vector2 RotateVector(Vector2 vector, float ang)
         {
-            float r = Mathf.Abs(ang * Mathf.PI / 180f);
-            int m = (ang > 0) ? 1 : -1;
+            float r = ang * Mathf.PI / 180f;
             Matrix2x2 matrix = new Matrix2x2(
-                Mathf.Cos(r), m * -Mathf.Sin(r),
-                Mathf.Sin(r) * m, Mathf.Cos(r));
+                Mathf.Cos(r), -Mathf.Sin(r),
+                Mathf.Sin(r), Mathf.Cos(r));
             return matrix * vector;
+        }
+
+        /// <summary>
+        /// A method for determining the Bezier curve in 2 dimensions
+        /// </summary>
+        /// <param name="segments">The number of Vector2 points to return</param>
+        /// <param name="length">The length of the base line in pixels</param>
+        /// <param name="point">The position of the third point relative to the zero coordinates</param>
+        /// <returns>An array of curve points</returns>
+        public static Vector2[] BezierCurve(int segments, float length, Vector2 Tpoint, Vector2? P2 = null)
+        {
+            Vector2[] points = new Vector2[segments];
+            Vector2 P1 = Vector2.zero;
+            P2 = P2 ?? new Vector2(length, 0f);
+            for (int i = 0; i < segments; i++)
+            {
+                float val = (i + 1) / (float)segments;
+                Vector2 line = Vector2.Lerp(Tpoint, P2.Value, val) - Vector2.Lerp(P1, Tpoint, val);
+                points[i] = line * val + Vector2.Lerp(P1, Tpoint, val);
+            }
+            return points;
+        }
+
+        /// <summary>
+        /// Bezier curve with 3 regulation points
+        /// </summary>
+        public static Vector2[] BezierCurve(int segments, float length, Vector2 P1, Vector2 P2, Vector2? P3 = null)
+        {
+            Vector2[] points = new Vector2[segments];
+            Vector2 P0 = Vector2.zero;
+            P3 = P3 ?? new Vector2(length, 0f);
+            for (int i = 0; i < segments; i++)
+            {
+                float val = (i + 1) / (float)segments;
+                Vector2 Q0 = Vector2.Lerp(P0, P1, val);
+                Vector2 Q1 = Vector2.Lerp(P1, P2, val);
+                Vector2 Q2 = Vector2.Lerp(P2, P3.Value, val);
+                Vector2 R0 = Vector2.Lerp(Q0, Q1, val);
+                Vector2 R1 = Vector2.Lerp(Q1, Q2, val);
+                points[i] = Vector2.Lerp(R0, R1, val);
+            }
+            return points;
+        }
+
+        /// <summary>
+        /// A method for determining the coordinates of the intersection point of two vectors
+        /// </summary>
+        /// <param name="A">First vector</param>
+        /// <param name="B">Second Vector</param>
+        /// <param name="ABeg">The starting point of the first vector</param>
+        /// <param name="BBeg">The starting point of the second vector</param>
+        /// <returns>The coordinates of the intersection point; the zero of the coordinates is determined through the starting points</returns>
+        public static Vector2 IntersectionPoint(Vector2 A, Vector2 B, Vector2 ABeg, Vector2 BBeg)
+        {
+            float ratio = (ABeg - BBeg).magnitude / Mathf.Sin(Vector2.Angle(A, B) * Mathf.PI / 180f);
+            float sinB = Mathf.Sin(Vector2.Angle(BBeg - ABeg, A) * Mathf.PI / 180f);
+            float lenB = ratio * sinB;
+            return BBeg + lenB * B.normalized;
         }
 
         public struct Matrix2x2
         {
-            public Vector2 left, right;
+            public Vector2 left, right; 
             private readonly float _a, _b, _c, _d;
             public float A => _a;
             public float B => _b;
