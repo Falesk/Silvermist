@@ -74,8 +74,6 @@ namespace Silvermist
                     return "Symbol_Nectar";
                 if (itemType == Register.ObjectTypes.Silvermist)
                     return "Symbol_Silvermist";
-                if (itemType == Register.ObjectTypes.DebugObj)
-                    return "Symbol_Nectar";
                 return orig(itemType, intData);
             };
             On.ItemSymbol.ColorForItem += delegate (On.ItemSymbol.orig_ColorForItem orig, AbstractPhysicalObject.AbstractObjectType itemType, int intData)
