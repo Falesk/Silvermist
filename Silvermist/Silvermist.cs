@@ -228,7 +228,7 @@ namespace Silvermist
                 Vector2 P2 = BezierPoints[1];
                 Vector2 P3 = BezierPoints[2];
 
-                Vector2[] points = FCustom.BezierCurve(segs.GetLength(0), length, P1, P2, P3);
+                Vector2[] points = FCustom.BezierCurve(segs.GetLength(0), P1, P2, P3);
                 for (int i = 0; i < segs.GetLength(0); i++)
                 {
                     segs[i, 0] = points[i];
