@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using System;
+using UnityEngine;
 
 namespace Silvermist
 {
@@ -19,22 +20,27 @@ namespace Silvermist
                 v.x * Mathf.Sin(r) + v.y * Mathf.Cos(r));
         }
 
-        public static Vector2[] BezierCurve(int segments, float length, Vector2 P1, Vector2 P2) => BezierCurve(segments, P1, P2, new Vector2(length, 0f));
-        public static Vector2[] BezierCurve(int segments, Vector2 P1, Vector2 P2, Vector2 P3)
+        public static Vector2[] BezierCurve(int segments, params Vector2[] Ps)
         {
-            Vector2[] points = new Vector2[segments];
-            Vector2 P0 = Vector2.zero;
+            Vector2[] curvePoints = new Vector2[segments];
+            Vector2[] Points = new Vector2[Ps.Length + 1];
+            Array.Copy(Ps, 0, Points, 1, Ps.Length);
+            Points[0] = Vector2.zero;
             for (int i = 0; i < segments; i++)
             {
-                float val = (i + 1) / (float)segments;
-                Vector2 Q0 = Vector2.Lerp(P0, P1, val);
-                Vector2 Q1 = Vector2.Lerp(P1, P2, val);
-                Vector2 Q2 = Vector2.Lerp(P2, P3, val);
-                Vector2 R0 = Vector2.Lerp(Q0, Q1, val);
-                Vector2 R1 = Vector2.Lerp(Q1, Q2, val);
-                points[i] = Vector2.Lerp(R0, R1, val);
+                float t = (i + 1) / (float)segments;
+                curvePoints[i] = BezierT(t, Points);
             }
-            return points;
+            return curvePoints;
+        }
+        private static Vector2 BezierT(float t, params Vector2[] Ps)
+        {
+            Vector2[] pointsNext = new Vector2[Ps.Length - 1];
+            for (int i = 0; i < Ps.Length - 1; i++)
+                pointsNext[i] = Vector2.Lerp(Ps[i], Ps[i + 1], t);
+            if (pointsNext.Length == 1)
+                return pointsNext[0];
+            return BezierT(t, pointsNext);
         }
     }
 }
