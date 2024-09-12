@@ -7,8 +7,10 @@ namespace Silvermist
     {
         public bool updatePoints;
         public int segments = 16, pointer = -1;
-        public float angle;
+        public float rotation;
+        public Quaternion Q, Qr;
         public Vector2[] bezierPoints, mainPoints;
+        public Vector3[] cube, changedCube;
         public FLabel angleText;
 
         public DebugObj(AbstractPhysicalObject abstr) : base(abstr)
@@ -24,6 +26,13 @@ namespace Silvermist
             buoyancy = 0.9f;
             bezierPoints = new Vector2[] { new Vector2(15f, 35f), new Vector2(45f, 45f), new Vector2(75f, 0f) };
             updatePoints = true;
+            Q = new Quaternion(0f, 0f, 0f, 0f);
+            Qr = new Quaternion(0f, 0f, 0f, 0f);
+            cube = new Vector3[]
+            { new Vector3(-20f, -20f, 20f), new Vector3(20f, -20f, 20f), new Vector3(-20f, 20f, 20f), new Vector3(20f, 20f, 20f),
+              new Vector3(-20f, -20f, -20f), new Vector3(20f, -20f, -20f), new Vector3(-20f, 20f, -20f), new Vector3(20f, 20f, -20f) };
+            changedCube = new Vector3[cube.Length];
+            cube.CopyTo(changedCube, 0);
         }
 
         public override void Update(bool eu)
@@ -56,10 +65,28 @@ namespace Silvermist
                 updatePoints = false;
             }
 
-            if (Input.GetKey("]")) angle += 2f;
-            else if (Input.GetKey("[")) angle -= 2f;
-            if (angle > 360f) angle -= 360f;
-            else if (angle < 0f) angle += 360f;
+            if (Input.GetKey("t")) rotation += (rotation > Mathf.PI * 2f) ? -Mathf.PI * 2f : Mathf.PI / 120f;
+            else if (Input.GetKey("r")) rotation -= (rotation < 0) ? -Mathf.PI * 2f : Mathf.PI / 120f;
+
+            //var Q1 = Q;
+            if (Input.GetKey("]")) Q.x += 0.1f;
+            else if (Input.GetKey("[")) Q.x -= 0.1f;
+            if (Input.GetKey("'")) Q.y += 0.1f;
+            else if (Input.GetKey(";")) Q.y -= 0.1f;
+            if (Input.GetKey(".")) Q.z += 0.1f;
+            else if (Input.GetKey(",")) Q.z -= 0.1f;
+            if (Input.GetKey("j")) Q.w += 1f;
+            Q.Normalize();
+
+            Qr = new Quaternion(Mathf.Sin(rotation / 2f) * Q.x, Mathf.Sin(rotation / 2f) * Q.y, Mathf.Sin(rotation / 2f) * Q.z, Mathf.Cos(rotation / 2f)).normalized;
+            for (int i = 0; i < cube.Length; i++)
+                changedCube[i] = ((Qr * cube[i]).ToQuaternion() * Qr.Сonjugate()).ToVector3();
+            //if (Q == Q1)
+            //{
+            //    Qr = new Quaternion(Mathf.Sin(rotation / 2f) * Q.x, Mathf.Sin(rotation / 2f) * Q.y, Mathf.Sin(rotation / 2f) * Q.z, Mathf.Cos(rotation / 2f)).normalized;
+            //    for (int i = 0; i < cube.Length; i++)
+            //        changedCube[i] = ((Qr * cube[i]).ToQuaternion() * Qr.Сonjugate()).ToVector3();
+            //}
         }
 
         public override void PlaceInRoom(Room placeRoom)
@@ -76,12 +103,13 @@ namespace Silvermist
 
         public void InitiateSprites(RoomCamera.SpriteLeaser sLeaser, RoomCamera rCam)
         {
-            sLeaser.sprites = new FSprite[6];
-            sLeaser.sprites[0] = TriangleMesh.MakeLongMesh(segments, false, true);
-            for (int i = 1; i < 5; i++)
-                sLeaser.sprites[i] = new FSprite("Circle20") { scale = 0.25f };
-            sLeaser.sprites[5] = TriangleMesh.MakeLongMesh(4, false, true, "assets/LeafTex2");
-            angleText = new FLabel(Custom.GetFont(), $"ang: {angle}");
+            sLeaser.sprites = new FSprite[3];
+            sLeaser.sprites[0] = TriangleMesh.MakeLongMesh(2 * segments, false, true);
+            sLeaser.sprites[1] = TriangleMesh.MakeLongMesh(segments, false, true);
+            sLeaser.sprites[0].isVisible = false;
+            sLeaser.sprites[1].isVisible = false;
+            sLeaser.sprites[2] = TriangleMesh.MakeLongMesh(6, false, true);
+            angleText = new FLabel(Custom.GetFont(), "");
             AddToContainer(sLeaser, rCam, null);
         }
 
@@ -90,72 +118,87 @@ namespace Silvermist
             Vector2 pos = Vector2.Lerp(firstChunk.lastPos, firstChunk.pos, timeStacker) - camPos;
             ApplyPalette(sLeaser, rCam, rCam.currentPalette);
 
-            TriangleMesh mesh = sLeaser.sprites[0] as TriangleMesh;
+            TriangleMesh mesh = sLeaser.sprites[1] as TriangleMesh;
             Vector2 prev = Vector2.zero;
-            float rt = Mathf.Cos(angle * Mathf.PI / 180f);
             for (int i = 0; i < segments; i++)
             {
-                Vector2 w = Custom.PerpendicularVector(mainPoints[i] - prev).normalized;
-                Vector2 v = new Vector2(rt * mainPoints[i].x, mainPoints[i].y);
+                Vector2 v = (Vector2)(Qr * ((Vector3)mainPoints[i]).ToQuaternion() * Qr.Сonjugate()).ToVector3();
+                Vector2 w = Custom.PerpendicularVector(v - prev).normalized;
                 mesh.MoveVertice(4 * i, pos + v + w);
                 mesh.MoveVertice(4 * i + 1, pos + v - w);
                 mesh.MoveVertice(4 * i + 2, pos + prev + w);
                 mesh.MoveVertice(4 * i + 3, pos + prev - w);
-                prev = mainPoints[i];
-                prev.x *= rt;
+                prev = v;
             }
-            for (int i = 0; i < 3; i++)
+            angleText.x = pos.x;
+            angleText.y = pos.y - 40f;
+            angleText.text = $"Q:{Q}\nQ_rt:{Qr}\nAngle: {(int)(rotation * 180f / Mathf.PI)}  N: {pointer}";
+
+            mesh = sLeaser.sprites[2] as TriangleMesh;
+            Vector3[] points = FCustom.SortByZ(changedCube);
+            for (int i = 0; i < 6; i++)
             {
-                sLeaser.sprites[i + 1].x = pos.x + rt * bezierPoints[i].x;
-                sLeaser.sprites[i + 1].y = pos.y + bezierPoints[i].y;
-            }
-            sLeaser.sprites[4].SetPosition(pos);
-            mesh = sLeaser.sprites[5] as TriangleMesh;
-            pos.x -= 300f;
-            angleText.x = pos.x + 10f;
-            angleText.y = pos.y - 10f;
-            angleText.text = $"ang: {angle}";
-            bool rev = 150f < angle && angle < 330f;
-            for (int i = 0; i < 2; i++)
-            {
-                rt = rev ? Mathf.Sin(angle * Mathf.PI / 180f + 0.5f) : Mathf.Sin(0.5f - angle * Mathf.PI / 180f);
-                mesh.MoveVertice(4 * i, pos + new Vector2(0f, Mathf.Pow(i + 1, 1.5f) * 20f));
-                mesh.MoveVertice(4 * i + 1, pos + new Vector2((i > 0 ? 0 : 1) * 20f * rt, Mathf.Pow(i + 1, 1.5f) * 20f));
-                mesh.MoveVertice(4 * i + 2, pos + new Vector2(0f, Mathf.Pow(i, 1.5f) * 20f));
-                mesh.MoveVertice(4 * i + 3, pos + new Vector2((i > 0 ? 1 : 0) * 20f * rt, Mathf.Pow(i, 1.5f) * 20f));
-            }
-            for (int i = 2; i < 4; i++)
-            {
-                rt = rev ? Mathf.Sin(0.5f - angle * Mathf.PI / 180f) : Mathf.Sin(angle * Mathf.PI / 180f + 0.5f);
-                mesh.MoveVertice(4 * i, pos + new Vector2(0f, Mathf.Pow(i / 3 + 1, 1.5f) * 20f));
-                mesh.MoveVertice(4 * i + 1, pos + new Vector2((i > 2 ? 0 : 1) * 20f * rt, Mathf.Pow(i / 3 + 1, 1.5f) * 20f));
-                mesh.MoveVertice(4 * i + 2, pos + new Vector2(0f, Mathf.Pow(i / 3, 1.5f) * 20f));
-                mesh.MoveVertice(4 * i + 3, pos + new Vector2((i > 2 ? 1 : 0) * 20f * rt, Mathf.Pow(i / 3, 1.5f) * 20f));
-            }
+                if (i < 3)
+                {
+                    Vector3 v = points[0];
+                    int ind;
+                    for (int j = 0; j < changedCube.Length; j++)
+                        if (v == changedCube[j]) ind = j;
+                    //Доделать правильный порядок отрисовки плоскостей (сегментов)
+                }
+                mesh.MoveVertice(4 * i, pos);
+                mesh.MoveVertice(4 * i + 1, pos);
+                mesh.MoveVertice(4 * i + 2, pos);
+                mesh.MoveVertice(4 * i + 3, pos);
+            }    
+            //for (int i = 0; i < points.Length; i++)
+            //{
+            //    for (int j = 0; j < 3; j++)
+            //        mesh.MoveVertice(3 * i + j, pos + (Vector2)points[i]);
+            //}
+
+            //bool rev = 150f < angle && angle < 330f;
+
+            //mesh = sLeaser.sprites[0] as TriangleMesh;
+            //prev = Vector2.zero;
+            //float rX = angleX * Mathf.PI / 180f;
+            ////float rY = angleY * Mathf.PI / 180f;
+            //float tp = 0f;
+            //for (int i = 0; i < segments; i++)
+            //{
+            //    float t = -0.00390625f * Mathf.Pow(-segments + 2 * (i + 1), 2) + 1;
+            //    Vector2 v = FCustom.RotateVector(mainPoints[i], -angleY);
+            //    v.x *= Mathf.Cos(rX);
+            //    float s = Custom.VecToDeg(v) * Mathf.PI / 180f;
+            //    Vector2 w = new Vector2(Mathf.Sin(rX + 0.5f) * Mathf.Cos(s), Mathf.Sin(0.5f) * Mathf.Sin(s));
+            //    mesh.MoveVertice(8 * i, pos + v);
+            //    mesh.MoveVertice(8 * i + 1, pos + v + new Vector2(20f * t * w.x, w.y));
+            //    mesh.MoveVertice(8 * i + 2, pos + prev);
+            //    mesh.MoveVertice(8 * i + 3, pos + v + new Vector2(20f * tp * w.x, w.y));
+
+            //    w.x = Mathf.Sin(0.5f - rX) * Mathf.Cos(s);
+            //    mesh.MoveVertice(8 * i + 4, pos + v);
+            //    mesh.MoveVertice(8 * i + 5, pos + v + new Vector2(20f * t * w.x, w.y));
+            //    mesh.MoveVertice(8 * i + 6, pos + prev);
+            //    mesh.MoveVertice(8 * i + 7, pos + v + new Vector2(20f * tp * w.x, w.y));
+
+            //    tp = t;
+            //    prev = v;
+            //}
         }
 
         public void ApplyPalette(RoomCamera.SpriteLeaser sLeaser, RoomCamera rCam, RoomPalette palette)
         {
-            TriangleMesh mesh = sLeaser.sprites[0] as TriangleMesh;
+            TriangleMesh mesh = sLeaser.sprites[1] as TriangleMesh;
             for (int i = 0; i < mesh.verticeColors.Length; i++)
-                mesh.verticeColors[i] = Color.Lerp(Color.green, palette.blackColor, 0.35f);
-            for (int i = 1; i < 5; i++)
-                sLeaser.sprites[i].color = Color.red;
-            if (pointer != -1)
-                sLeaser.sprites[1 + pointer].color = Color.blue;
-            angleText.color = Color.Lerp(Color.red, palette.blackColor, 0.35f);
+                mesh.verticeColors[i] = Color.Lerp(Color.green, palette.blackColor, 0.4f);
+            //mesh = sLeaser.sprites[0] as TriangleMesh;
+            //for (int i = 0; i < mesh.verticeColors.Length; i++)
+            //    mesh.verticeColors[i] = Color.Lerp(Color.green, palette.blackColor, (i % 2 == 0) ? 0.55f : 0.4f);
 
-            mesh = sLeaser.sprites[5] as TriangleMesh;
-            bool backR = 150f < angle && angle < 330f;
-            bool backL = (210f < angle && angle < 360f) || angle < 30f;
-            Color front = Color.Lerp(Color.green, palette.blackColor, 0.3f);
-            Color back = Color.Lerp(Color.green, palette.blackColor, 0.65f);
+            mesh = sLeaser.sprites[2] as TriangleMesh;
             for (int i = 0; i < mesh.verticeColors.Length; i++)
-            {
-                if (i / 8 == 0) //back
-                    mesh.verticeColors[i] = i % 2 == 0 ? Color.Lerp(Color.green, palette.blackColor, 0.4f) : backR ? back : (backL ? back : front);
-                else mesh.verticeColors[i] = i % 2 == 0 ? Color.Lerp(Color.green, palette.blackColor, 0.4f) : backR ? (backL ? back : front) : front;
-            }
+                mesh.verticeColors[i] = Color.Lerp(Color.red, palette.blackColor, 0.9f - 0.6f * ((float)(i + 1) / mesh.verticeColors.Length));
         }
 
         public void AddToContainer(RoomCamera.SpriteLeaser sLeaser, RoomCamera rCam, FContainer newContatiner)

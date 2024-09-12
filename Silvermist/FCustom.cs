@@ -42,5 +42,24 @@ namespace Silvermist
                 return pointsNext[0];
             return BezierT(t, pointsNext);
         }
+
+        public static Vector3[] SortByZ(Vector3[] points)
+        {
+            Vector3[] pointsSorted = new Vector3[points.Length];
+            points.CopyTo(pointsSorted, 0);
+            int i = pointsSorted.Length - 1;
+            while (i > 1)
+            {
+                for (int j = 1; j < i; j++)
+                    if (pointsSorted[j - 1].z > pointsSorted[j].z)
+                        (pointsSorted[j - 1], pointsSorted[j]) = (pointsSorted[j], pointsSorted[j - 1]);
+                i--;
+            }
+            return pointsSorted;
+        }
+
+        public static Quaternion Сonjugate(this Quaternion q) => new Quaternion(-q.x, -q.y, -q.z, q.w);
+        public static Quaternion ToQuaternion(this Vector3 v) => new Quaternion(v.x, v.y, v.z, 0f);
+        public static Vector3 ToVector3(this Quaternion q) => new Vector3(q.x, q.y, q.z);
     }
 }
