@@ -43,19 +43,33 @@ namespace Silvermist
             return BezierT(t, pointsNext);
         }
 
-        public static Vector3[] SortByZ(Vector3[] points)
+        public static Vector3 MinZ(this Vector3[] vs)
         {
-            Vector3[] pointsSorted = new Vector3[points.Length];
-            points.CopyTo(pointsSorted, 0);
-            int i = pointsSorted.Length - 1;
-            while (i > 1)
+            float min = float.MaxValue;
+            int ind = -1;
+            for (int i = 0; i < vs.Length; i++)
             {
-                for (int j = 1; j < i; j++)
-                    if (pointsSorted[j - 1].z > pointsSorted[j].z)
-                        (pointsSorted[j - 1], pointsSorted[j]) = (pointsSorted[j], pointsSorted[j - 1]);
-                i--;
+                if (vs[i].z < min)
+                {
+                    min = vs[i].z;
+                    ind = i;
+                }
             }
-            return pointsSorted;
+            return vs[ind];
+        }
+        public static Vector3 MaxZ(this Vector3[] vs)
+        {
+            float max = float.MinValue;
+            int ind = -1;
+            for (int i = 0; i < vs.Length; i++)
+            {
+                if (vs[i].z > max)
+                {
+                    max = vs[i].z;
+                    ind = i;
+                }
+            }
+            return vs[ind];
         }
 
         public static Quaternion Сonjugate(this Quaternion q) => new Quaternion(-q.x, -q.y, -q.z, q.w);

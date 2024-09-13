@@ -1,5 +1,7 @@
-﻿using UnityEngine;
-using RWCustom;
+﻿using RWCustom;
+using System;
+using System.Linq;
+using UnityEngine;
 
 namespace Silvermist
 {
@@ -131,26 +133,44 @@ namespace Silvermist
                 prev = v;
             }
             angleText.x = pos.x;
-            angleText.y = pos.y - 40f;
+            angleText.y = pos.y - 50f;
             angleText.text = $"Q:{Q}\nQ_rt:{Qr}\nAngle: {(int)(rotation * 180f / Mathf.PI)}  N: {pointer}";
 
             mesh = sLeaser.sprites[2] as TriangleMesh;
-            Vector3[] points = FCustom.SortByZ(changedCube);
+            float Pz1 = (changedCube[0].z + changedCube[1].z + changedCube[2].z + changedCube[3].z) / 4f;
+            float Pz4 = (changedCube[4].z + changedCube[5].z + changedCube[6].z + changedCube[7].z) / 4f;
+
+            float Pz2 = (changedCube[0].z + changedCube[2].z + changedCube[4].z + changedCube[6].z) / 4f;
+            float Pz5 = (changedCube[1].z + changedCube[3].z + changedCube[5].z + changedCube[7].z) / 4f;
+
+            float Pz3 = (changedCube[0].z + changedCube[1].z + changedCube[4].z + changedCube[5].z) / 4f;
+            float Pz6 = (changedCube[2].z + changedCube[3].z + changedCube[6].z + changedCube[7].z) / 4f;
+
+            float[] Pzs = new float[] { Pz1, Pz2, Pz3, Pz4, Pz5, Pz6 };
+            Array.Sort(Pzs);
             for (int i = 0; i < 6; i++)
             {
-                if (i < 3)
-                {
-                    Vector3 v = points[0];
-                    int ind;
-                    for (int j = 0; j < changedCube.Length; j++)
-                        if (v == changedCube[j]) ind = j;
-                    //Доделать правильный порядок отрисовки плоскостей (сегментов)
-                }
-                mesh.MoveVertice(4 * i, pos);
-                mesh.MoveVertice(4 * i + 1, pos);
-                mesh.MoveVertice(4 * i + 2, pos);
-                mesh.MoveVertice(4 * i + 3, pos);
-            }    
+                int ind = 0;
+                Vector3 w = changedCube[(i < 3) ? Array.IndexOf(changedCube, changedCube.MinZ()) : Array.IndexOf(changedCube, changedCube.MaxZ())];
+                for (int j = 0; j < changedCube.Length; j++)
+                    if (w == changedCube[j]) ind = j;
+                Vector3[] segment;
+
+                float Pz = Pzs[i];
+                if (Pz == Pz1 || Pz == Pz4) segment = (ind > 3) ? new Vector3[] { changedCube[0], changedCube[1], changedCube[2], changedCube[3] } :
+                        new Vector3[] { changedCube[5], changedCube[4], changedCube[7], changedCube[6] };
+                else if (Pz == Pz2 || Pz == Pz5) segment = (ind % 2 == 0) ? new Vector3[] { changedCube[0], changedCube[4], changedCube[2], changedCube[6] } :
+                        new Vector3[] { changedCube[5], changedCube[1], changedCube[7], changedCube[3] };
+                else segment = (ind < 6 && !(ind == 2 || ind == 3)) ? new Vector3[] { changedCube[5], changedCube[1], changedCube[4], changedCube[0] } :
+                         new Vector3[] { changedCube[3], changedCube[7], changedCube[2], changedCube[6] };
+
+                mesh.MoveVertice(4 * i + 0, pos + (Vector2)segment[0]);
+                mesh.MoveVertice(4 * i + 1, pos + (Vector2)segment[1]);
+                mesh.MoveVertice(4 * i + 2, pos + (Vector2)segment[2]);
+                mesh.MoveVertice(4 * i + 3, pos + (Vector2)segment[3]);
+            }
+
+
             //for (int i = 0; i < points.Length; i++)
             //{
             //    for (int j = 0; j < 3; j++)
@@ -198,7 +218,10 @@ namespace Silvermist
 
             mesh = sLeaser.sprites[2] as TriangleMesh;
             for (int i = 0; i < mesh.verticeColors.Length; i++)
-                mesh.verticeColors[i] = Color.Lerp(Color.red, palette.blackColor, 0.9f - 0.6f * ((float)(i + 1) / mesh.verticeColors.Length));
+            {
+                Color c = Color.Lerp(Color.red, palette.blackColor, 0.9f - 0.6f * ((float)(i + 1) / mesh.verticeColors.Length));
+                mesh.verticeColors[i] = c;
+            }
         }
 
         public void AddToContainer(RoomCamera.SpriteLeaser sLeaser, RoomCamera rCam, FContainer newContatiner)
