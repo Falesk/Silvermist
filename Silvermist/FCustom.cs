@@ -43,33 +43,24 @@ namespace Silvermist
             return BezierT(t, pointsNext);
         }
 
-        public static Vector3 MinZ(this Vector3[] vs)
+        public static Vector3[,] SortVertices(Vector3[,] vs)
         {
-            float min = float.MaxValue;
-            int ind = -1;
-            for (int i = 0; i < vs.Length; i++)
+            int j = vs.GetLength(0);
+            while (j > 0)
             {
-                if (vs[i].z < min)
+                for (int i = 1; i < j; i++)
                 {
-                    min = vs[i].z;
-                    ind = i;
+                    float a = Mathf.Min(vs[i, 0].z, vs[i, 1].z, vs[i, 2].z, vs[i, 3].z);
+                    float b = Mathf.Min(vs[i - 1, 0].z, vs[i - 1, 1].z, vs[i - 1, 2].z, vs[i - 1, 3].z);
+                    if (b > a)
+                    {
+                        (vs[i, 0], vs[i, 1], vs[i, 2], vs[i, 3], vs[i - 1, 0], vs[i - 1, 1], vs[i - 1, 2], vs[i - 1, 3]) = 
+                            (vs[i - 1, 0], vs[i - 1, 1], vs[i - 1, 2], vs[i - 1, 3], vs[i, 0], vs[i, 1], vs[i, 2], vs[i, 3]);
+                    }
                 }
+                j--;
             }
-            return vs[ind];
-        }
-        public static Vector3 MaxZ(this Vector3[] vs)
-        {
-            float max = float.MinValue;
-            int ind = -1;
-            for (int i = 0; i < vs.Length; i++)
-            {
-                if (vs[i].z > max)
-                {
-                    max = vs[i].z;
-                    ind = i;
-                }
-            }
-            return vs[ind];
+            return vs;
         }
 
         public static Quaternion Сonjugate(this Quaternion q) => new Quaternion(-q.x, -q.y, -q.z, q.w);

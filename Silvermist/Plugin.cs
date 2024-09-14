@@ -29,15 +29,11 @@ namespace Silvermist
             {
                 orig(self);
                 Futile.atlasManager.LoadAtlas("assets/sprites");
-                Futile.atlasManager.LoadImage("assets/LeafTex1");
-                Futile.atlasManager.LoadImage("assets/LeafTex2");
             };
             On.RainWorld.UnloadResources += delegate (On.RainWorld.orig_UnloadResources orig, RainWorld self)
             {
                 orig(self);
                 Futile.atlasManager.UnloadAtlas("assets/sprites");
-                Futile.atlasManager.UnloadImage("assets/LeafTex1");
-                Futile.atlasManager.UnloadImage("assets/LeafTex2");
             };
 
             //Main
