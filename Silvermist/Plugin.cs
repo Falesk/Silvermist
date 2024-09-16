@@ -138,7 +138,7 @@ namespace Silvermist
             {
                 if (po.active && po.type == Register.PlacedObjectTypes.Silvermist && self.abstractRoom.firstTimeRealized)
                 {
-                    AbstractConsumable abstr = new AbstractConsumable(
+                    AbstractConsumable abstr = new (
                         self.world,
                         Register.ObjectTypes.Silvermist,
                         null,
@@ -196,7 +196,7 @@ namespace Silvermist
                 bool flag2 = true;
                 for (int i = 0; i < 2; i++)
                 {
-                    if (flag && self.eatCounter > 0 && self.grasps[i] != null && self.grasps[i].grabbed is Nectar && self.FoodInStomach < self.MaxFoodInStomach && (i == 0 || !(self.grasps[0]?.grabbed is IPlayerEdible)))
+                    if (flag && self.eatCounter > 0 && self.grasps[i] != null && self.grasps[i].grabbed is Nectar && self.FoodInStomach < self.MaxFoodInStomach && (i == 0 || self.grasps[0]?.grabbed is not IPlayerEdible))
                         (self.graphicsModule as PlayerGraphics).BiteStruggle(i);
                     else if (!flag && flag2 && self.eatCounter < 40)
                     {

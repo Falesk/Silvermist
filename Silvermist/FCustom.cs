@@ -43,28 +43,22 @@ namespace Silvermist
             return BezierT(t, pointsNext);
         }
 
-        public static Vector3[,] SortVertices(Vector3[,] vs)
+        public static Vector3[,] ReverseIfNecessary(Vector3[,] vs)
         {
-            int j = vs.GetLength(0);
-            while (j > 0)
-            {
-                for (int i = 1; i < j; i++)
-                {
-                    float a = Mathf.Min(vs[i, 0].z, vs[i, 1].z, vs[i, 2].z, vs[i, 3].z);
-                    float b = Mathf.Min(vs[i - 1, 0].z, vs[i - 1, 1].z, vs[i - 1, 2].z, vs[i - 1, 3].z);
-                    if (b > a)
-                    {
-                        (vs[i, 0], vs[i, 1], vs[i, 2], vs[i, 3], vs[i - 1, 0], vs[i - 1, 1], vs[i - 1, 2], vs[i - 1, 3]) = 
-                            (vs[i - 1, 0], vs[i - 1, 1], vs[i - 1, 2], vs[i - 1, 3], vs[i, 0], vs[i, 1], vs[i, 2], vs[i, 3]);
-                    }
-                }
-                j--;
-            }
+            if (vs[0, 0].z > vs[vs.GetLength(0) - 1, 0].z)
+                for (int i = 0; i < vs.GetLength(0) / 2; i++)
+                    for (int j = 0; j < vs.GetLength(1); j++)
+                        (vs[i, j], vs[vs.GetLength(0) - 1 - i, j]) = (vs[vs.GetLength(0) - 1 - i, j], vs[i, j]);
+            if (Mathf.Min(vs[0, 0].z, vs[0, 1].z, vs[0, 2].z, vs[0, 3].z) > Mathf.Min(vs[1, 0].z, vs[1, 1].z, vs[1, 2].z, vs[1, 3].z))
+                for (int i = 0; i < vs.GetLength(0) - 1; i += 2)
+                    for (int j = 0; j < vs.GetLength(1); j++)
+                        (vs[i, j], vs[i + 1, j]) = (vs[i + 1, j], vs[i, j]);
             return vs;
         }
 
-        public static Quaternion Сonjugate(this Quaternion q) => new Quaternion(-q.x, -q.y, -q.z, q.w);
-        public static Quaternion ToQuaternion(this Vector3 v) => new Quaternion(v.x, v.y, v.z, 0f);
-        public static Vector3 ToVector3(this Quaternion q) => new Vector3(q.x, q.y, q.z);
+        public static Quaternion Сonjugate(this Quaternion q) => new (-q.x, -q.y, -q.z, q.w);
+        public static Quaternion ToQuaternion(this Vector3 v) => new (v.x, v.y, v.z, 0f);
+        public static Vector3 ToVector3(this Quaternion q) => new (q.x, q.y, q.z);
+        //CrossProduct
     }
 }

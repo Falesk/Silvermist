@@ -10,12 +10,13 @@ namespace Silvermist
         public float rotation;
         public Quaternion Q, Qr;
         public Vector2[] bezierPoints, mainPoints;
+        public Vector3[,] leafVertices;
         public FLabel angleText;
 
         public DebugObj(AbstractPhysicalObject abstr) : base(abstr)
         {
-            bodyChunks = new BodyChunk[] { new BodyChunk(this, 0, Vector2.zero, 1, 0.05f) };
-            bodyChunkConnections = new BodyChunkConnection[0];
+            bodyChunks = [ new (this, 0, Vector2.zero, 1, 0.05f) ];
+            bodyChunkConnections = [];
             gravity = 0;
             airFriction = 0.999f;
             waterFriction = 0.9f;
@@ -23,10 +24,11 @@ namespace Silvermist
             collisionLayer = 0;
             bounce = 0.1f;
             buoyancy = 0.9f;
-            bezierPoints = new Vector2[] { new Vector2(15f, 35f), new Vector2(45f, 45f), new Vector2(75f, 0f) };
+            bezierPoints = [ new (15f, 35f), new (45f, 45f), new (75f, 0f) ];
             updatePoints = true;
             Q = new Quaternion(0f, 0f, 0f, 0f);
             Qr = new Quaternion(0f, 0f, 0f, 0f);
+            leafVertices = new Vector3[2 * segments, 4];
         }
 
         public override void Update(bool eu)
@@ -72,6 +74,31 @@ namespace Silvermist
             Q.Normalize();
 
             Qr = new Quaternion(Mathf.Sin(rotation / 2f) * Q.x, Mathf.Sin(rotation / 2f) * Q.y, Mathf.Sin(rotation / 2f) * Q.z, Mathf.Cos(rotation / 2f)).normalized;
+
+            Vector3 prevCenter = Vector3.zero, prevPeref = Vector3.zero;
+            for (int i = 0; i < segments; i++)
+            {
+                Vector3 v = new Vector3(0f, 0f, 10f) * (-0.00390625f * Mathf.Pow((i + 1) / (float)segments * 32 - 16, 2) + 1);
+                Quaternion Qv = ((Vector3)mainPoints[i] - prevCenter).ToQuaternion();
+                Qv.Normalize();
+                Qv = new Quaternion(Qv.x * Mathf.Sin(15f * Mathf.PI / 180f), Qv.y * Mathf.Sin(15f * Mathf.PI / 180f), Qv.z * Mathf.Sin(15f * Mathf.PI / 180f), Mathf.Cos(15f * Mathf.PI / 180f)).normalized;
+                v = (Qv * v.ToQuaternion() * Qv.Сonjugate()).ToVector3();
+                v += (Vector3)mainPoints[i];
+
+                leafVertices[2 * i, 0] = new Vector3(mainPoints[i].x, mainPoints[i].y, 0f);
+                leafVertices[2 * i, 1] = new Vector3(v.x, v.y, v.z);
+                leafVertices[2 * i, 2] = new Vector3(prevCenter.x, prevCenter.y, 0f);
+                leafVertices[2 * i, 3] = new Vector3(prevPeref.x, prevPeref.y, prevPeref.z);
+                leafVertices[2 * i + 1, 0] = new Vector3(mainPoints[i].x, mainPoints[i].y, 0f);
+                leafVertices[2 * i + 1, 1] = new Vector3(v.x, v.y, -v.z);
+                leafVertices[2 * i + 1, 2] = new Vector3(prevCenter.x, prevCenter.y, 0f);
+                leafVertices[2 * i + 1, 3] = new Vector3(prevPeref.x, prevPeref.y, -prevPeref.z);
+                prevCenter = (Vector3)mainPoints[i];
+                prevPeref = v;
+            }
+            for (int i = 0; i < leafVertices.Length; i++)
+                leafVertices[i / 4, i % 4] = (Qr * leafVertices[i / 4, i % 4].ToQuaternion() * Qr.Сonjugate()).ToVector3();
+            leafVertices = FCustom.ReverseIfNecessary(leafVertices);
         }
 
         public override void PlaceInRoom(Room placeRoom)
@@ -108,42 +135,16 @@ namespace Silvermist
                 Vector2 prev = (i == 0) ? Vector2.zero : (Vector2)points[i - 1];
                 points[i] = v;
                 Vector2 w = Custom.PerpendicularVector(v - prev).normalized;
-                mesh.MoveVertice(4 * i, pos + v + w);
-                mesh.MoveVertice(4 * i + 1, pos + v - w);
-                mesh.MoveVertice(4 * i + 2, pos + prev + w);
-                mesh.MoveVertice(4 * i + 3, pos + prev - w);
+                mesh.MoveVertice(4 * i, pos + v + 0.75f * w);
+                mesh.MoveVertice(4 * i + 1, pos + v - 0.75f * w);
+                mesh.MoveVertice(4 * i + 2, pos + prev + 0.75f * w);
+                mesh.MoveVertice(4 * i + 3, pos + prev - 0.75f * w);
             }
             angleText.x = pos.x;
             angleText.y = pos.y - 50f;
             angleText.text = $"Q_v:{Q}\nQ_rt:{Qr}\nAngle: {(int)(rotation * 180f / Mathf.PI)}";
 
             mesh = sLeaser.sprites[1] as TriangleMesh;
-            Vector3[,] leafVertices = new Vector3[2 * segments, 4];
-            Vector3 prevCenter = Vector3.zero;
-            Vector3 prevPeref = Vector3.zero;
-            for (int i = 0; i < segments; i++)
-            {
-                Vector3 v = new Vector3(0f, 0f, 10f) * (-0.00390625f * Mathf.Pow((i + 1) / (float)segments * 32 - 16, 2) + 1);
-                Quaternion Qv = ((Vector3)mainPoints[i] - prevCenter).ToQuaternion();
-                Qv.Normalize();
-                Qv = new Quaternion(Qv.x * Mathf.Sin(15f * Mathf.PI / 180f), Qv.y * Mathf.Sin(15f * Mathf.PI / 180f), Qv.z * Mathf.Sin(15f * Mathf.PI / 180f), Mathf.Cos(15f * Mathf.PI / 180f)).normalized;
-                v = (Qv * v.ToQuaternion() * Qv.Сonjugate()).ToVector3();
-                v += (Vector3)mainPoints[i];
-
-                leafVertices[2 * i, 0] = new Vector3(mainPoints[i].x, mainPoints[i].y, 0f);
-                leafVertices[2 * i, 1] = new Vector3(v.x, v.y, v.z);
-                leafVertices[2 * i, 2] = new Vector3(prevCenter.x, prevCenter.y, 0f);
-                leafVertices[2 * i, 3] = new Vector3(prevPeref.x, prevPeref.y, prevPeref.z);
-                leafVertices[2 * i + 1, 0] = new Vector3(mainPoints[i].x, mainPoints[i].y, 0f);
-                leafVertices[2 * i + 1, 1] = new Vector3(v.x, v.y, -v.z);
-                leafVertices[2 * i + 1, 2] = new Vector3(prevCenter.x, prevCenter.y, 0f);
-                leafVertices[2 * i + 1, 3] = new Vector3(prevPeref.x, prevPeref.y, -prevPeref.z);
-                prevCenter = (Vector3)mainPoints[i];
-                prevPeref = v;
-            }
-            for (int i = 0; i < leafVertices.Length; i++)
-                leafVertices[i / 4, i % 4] = (Qr * leafVertices[i / 4, i % 4].ToQuaternion() * Qr.Сonjugate()).ToVector3();
-            leafVertices = FCustom.SortVertices(leafVertices);
             for (int i = 0; i < mesh.vertices.Length; i++)
                 mesh.MoveVertice(i, pos + (Vector2)leafVertices[i / 4, i % 4]);
         }
@@ -153,22 +154,27 @@ namespace Silvermist
             TriangleMesh mesh = sLeaser.sprites[0] as TriangleMesh;
             for (int i = 0; i < mesh.verticeColors.Length; i++)
             {
-                Color c1 = Color.Lerp(Color.green, palette.blackColor, 0.9f - 0.8f * i / mesh.verticeColors.Length);
-                Color c2 = Color.Lerp(Color.green, palette.blackColor, 0.9f - 0.8f * (i + 1) / mesh.verticeColors.Length);
-                mesh.verticeColors[i] = (i % 4 < 2) ? c2 : c1;
+                Color c1 = Color.Lerp(new Color(0.25f, 0.05f, 0.45f), Color.green, i / (float)mesh.verticeColors.Length);
+                Color c2 = Color.Lerp(new Color(0.25f, 0.05f, 0.45f), Color.green, (i + 1) / (float)mesh.verticeColors.Length);
+                mesh.verticeColors[i] = Color.Lerp((i % 4 < 2) ? c2 : c1, palette.blackColor, 0.6f);
             }
+
             mesh = sLeaser.sprites[1] as TriangleMesh;
             for (int i = 0; i < mesh.verticeColors.Length; i++)
             {
-                Color c1 = Color.Lerp(Color.green, palette.blackColor, 0.7f - 0.4f * i / mesh.verticeColors.Length);
-                Color c2 = Color.Lerp(Color.green, palette.blackColor, 0.7f - 0.4f * (i + 1) / mesh.verticeColors.Length);
-                mesh.verticeColors[i] = (i % 4 < 2) ? c2 : c1;
+                bool b = leafVertices[0, 2].z == 0;
+                float f;
+                if ((i % 8 == 2 || i % 8 == 3 || i % 8 == 6 || i % 8 == 7) && b) f = (i / 2) / (float)(mesh.verticeColors.Length / 2);
+                else f = (i / 2 + 1) / (float)(mesh.verticeColors.Length / 2);
+
+                Color c = Color.Lerp(b ? new Color(0.25f, 0.05f, 0.45f) : Color.green, b ? Color.green : new Color(0.25f, 0.05f, 0.45f), f);
+                mesh.verticeColors[i] = Color.Lerp(c, palette.blackColor, 0.3f);
             }
         }
 
         public void AddToContainer(RoomCamera.SpriteLeaser sLeaser, RoomCamera rCam, FContainer newContatiner)
         {
-            newContatiner = newContatiner ?? rCam.ReturnFContainer("Items");
+            newContatiner ??= rCam.ReturnFContainer("Items");
             foreach (FSprite sprite in sLeaser.sprites)
             {
                 sprite.RemoveFromContainer();

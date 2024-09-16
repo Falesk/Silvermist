@@ -17,8 +17,8 @@ namespace Silvermist
 
         public Nectar(AbstractPhysicalObject abstr) : base(abstr)
         {
-            bodyChunks = new BodyChunk[] { new BodyChunk(this, 0, Vector2.zero, 5, 0.05f) };
-            bodyChunkConnections = new BodyChunkConnection[0];
+            bodyChunks = [ new BodyChunk(this, 0, Vector2.zero, 5, 0.05f) ];
+            bodyChunkConnections = [];
             gravity = 0.9f;
             airFriction = 0.999f;
             waterFriction = 0.9f;
@@ -72,7 +72,7 @@ namespace Silvermist
             lastSwallow = swallowed;
             bool flag = grabbedBy.Count > 0 && grabbedBy[0]?.grabber is Player player && player.input[0].pckp &&
                 ((player.grasps[0]?.grabbed is Nectar nectar && nectar.abstractPhysicalObject.ID == abstractPhysicalObject.ID) ||
-                (player.grasps[1]?.grabbed is Nectar && (player.grasps[0] == null || !(player.grasps[0].grabbed is IPlayerEdible))));
+                (player.grasps[1]?.grabbed is Nectar && (player.grasps[0] == null || player.grasps[0].grabbed is not IPlayerEdible)));
             swallowed = SwallowedChange(swallowed, flag);
 
             if (mode == Mode.Free && grabbedBy.Count == 0)
@@ -197,7 +197,7 @@ namespace Silvermist
         public override void Collide(PhysicalObject otherObject, int myChunk, int otherChunk)
         {
             base.Collide(otherObject, myChunk, otherChunk);
-            if (!(otherObject is Creature))
+            if (otherObject is not Creature)
                 return;
             if (mode == Mode.Thrown)
             {
@@ -213,13 +213,13 @@ namespace Silvermist
             var jelSpr = Futile.atlasManager.GetElementWithName($"Cicada{jellySprite}head");
             Vector2 anchors = FCustom.TrimmedAnchors(jelSpr);
 
-            sLeaser.sprites = new FSprite[]
-            {
+            sLeaser.sprites =
+            [
                 new FSprite("Futile_White") { shader = rCam.game.rainWorld.Shaders["WaterNut"] },
                 new FSprite(jelSpr) { anchorX = anchors.x, anchorY = anchors.y, alpha = 0.8f },
                 new FSprite("DangleFruit2A") { anchorY = 0.7f, anchorX = 0.6f },
                 new FSprite("Futile_White") { alpha = 0f, shader = rCam.game.rainWorld.Shaders["FlatLightBehindTerrain"] },
-            };
+            ];
             AddToContainer(sLeaser, rCam, null);
         }
 
@@ -297,7 +297,7 @@ namespace Silvermist
 
         public void AddToContainer(RoomCamera.SpriteLeaser sLeaser, RoomCamera rCam, FContainer newContatiner)
         {
-            newContatiner = newContatiner ?? rCam.ReturnFContainer("Items");
+            newContatiner ??= rCam.ReturnFContainer("Items");
             foreach (FSprite sprite in sLeaser.sprites)
             {
                 sprite.RemoveFromContainer();

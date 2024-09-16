@@ -19,8 +19,8 @@ namespace Silvermist
 
         public Silvermist(AbstractPhysicalObject abstr) : base(abstr)
         {
-            bodyChunks = new BodyChunk[] { new BodyChunk(this, 0, Vector2.zero, 5, 0.05f) };
-            bodyChunkConnections = new BodyChunkConnection[0];
+            bodyChunks = [ new BodyChunk(this, 0, Vector2.zero, 5, 0.05f) ];
+            bodyChunkConnections = [];
             gravity = 0f;
             airFriction = 0.999f;
             waterFriction = 0.9f;
@@ -63,7 +63,7 @@ namespace Silvermist
 
             if (ModManager.MSC && MoreSlugcats.MMF.cfgCreatureSense.Value && room.world.game.IsStorySession && room.world.game.cameras[0]?.hud != null)
             {
-                MoreSlugcats.PersistentObjectTracker tracker = new MoreSlugcats.PersistentObjectTracker(abstractPhysicalObject);
+                MoreSlugcats.PersistentObjectTracker tracker = new(abstractPhysicalObject);
                 Map map = room.world.game.cameras[0].hud.map;
                 if (!map.mapData.objectTrackers.Any(tr => tr.obj.ID == abstractPhysicalObject.ID && tr.obj.type == Register.ObjectTypes.Silvermist))
                     map.addTracker(tracker);
@@ -163,7 +163,7 @@ namespace Silvermist
                 ApplyPalette(sLeaser, rCam, rCam.currentPalette);
 
             TriangleMesh mesh = sLeaser.sprites[0] as TriangleMesh;
-            Vector2 prevTilt = new Vector2(2.5f, 0f);
+            Vector2 prevTilt = new (2.5f, 0f);
             Vector2 point = rootPos - camPos;
 
             for (int i = 0; i < stalkSegs; i++) {
@@ -196,7 +196,7 @@ namespace Silvermist
 
         public void AddToContainer(RoomCamera.SpriteLeaser sLeaser, RoomCamera rCam, FContainer newContatiner)
         {
-            newContatiner = newContatiner ?? rCam.ReturnFContainer("Background");
+            newContatiner ??= rCam.ReturnFContainer("Background");
             foreach (FSprite sprite in sLeaser.sprites)
             {
                 sprite.RemoveFromContainer();
