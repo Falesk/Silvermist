@@ -125,7 +125,6 @@ namespace Silvermist
                     return ObjectsPage.DevObjectCategories.Consumable;
                 return orig(self, type);
             };
-            //IL.Room.Loaded += Room_Loaded;
             On.Room.Loaded += Room_Loaded;
             On.AbstractConsumable.IsTypeConsumable += (On.AbstractConsumable.orig_IsTypeConsumable orig, AbstractPhysicalObject.AbstractObjectType type) => type == Register.ObjectTypes.Silvermist || orig(type);
         }
@@ -152,40 +151,6 @@ namespace Silvermist
             }
             orig(self);
         }
-
-        //private void Room_Loaded(ILContext il)
-        //{
-        //    try
-        //    {
-        //        ILCursor c = new ILCursor(il);
-        //        c.GotoNext(MoveType.After,
-        //            x => x.MatchLdarg(0),
-        //            x => x.MatchCallOrCallvirt(typeof(Room).GetMethod("get_abstractRoom")),
-        //            x => x.MatchLdfld(typeof(AbstractRoom).GetField(nameof(AbstractRoom.entities))),
-        //            x => x.MatchLdloc(62),
-        //            x => x.MatchCallOrCallvirt(typeof(List<AbstractWorldEntity>).GetMethod(nameof(List<AbstractWorldEntity>.Add))),
-        //            x => x.Match(OpCodes.Br)
-        //            );
-
-        //        int num = (int)(new ILCursor(il).GotoNext(MoveType.After, x => x.MatchLdloc(43)).Instrs[0].Operand);
-        //        flag = num;
-
-        //        c.MoveAfterLabels();
-        //        c.Emit(OpCodes.Ldarg_0);
-
-        //        c.EmitDelegate<Action<Room>>((Room self) =>
-        //        {
-        //            Debug.Log($"{num} - num");
-        //            if (self.roomSettings.placedObjects[num].type == Register.PlacedObjectTypes.Silvermist)
-        //            {
-        //                PlacedObject po = self.roomSettings.placedObjects[num];
-        //                AbstractPhysicalObject abstr = new AbstractPhysicalObject(self.world, Register.ObjectTypes.Silvermist, null, self.GetWorldCoordinate(po.pos), self.game.GetNewID());
-        //                self.abstractRoom.entities.Add(abstr);
-        //            }
-        //        });
-        //    }
-        //    catch (Exception ex) { Debug.LogException(ex); }
-        //}
 
         private void Player_GrabUpdate(On.Player.orig_GrabUpdate orig, Player self, bool eu)
         {
