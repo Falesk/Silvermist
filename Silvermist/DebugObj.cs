@@ -6,7 +6,7 @@ namespace Silvermist
     public class DebugObj : PhysicalObject, IDrawable
     {
         public bool updatePoints;
-        public int segments = 10/*16*/, pointer = -1;
+        public int segments = 10, pointer = -1;
         public float rotation;
         public Quaternion Q, Qr;
         public Vector2[] bezierPoints, mainPoints;
@@ -119,7 +119,6 @@ namespace Silvermist
         {
             sLeaser.sprites = new FSprite[1];
             sLeaser.sprites[0] = TriangleMesh.MakeLongMesh(2 * segments, false, true);
-            //sLeaser.sprites[1] = TriangleMesh.MakeLongMesh(2, false, true);
             angleText = new FLabel(Custom.GetFont(), "");
             AddToContainer(sLeaser, rCam, null);
         }
@@ -133,20 +132,9 @@ namespace Silvermist
             for (int i = 0; i < mesh.vertices.Length; i++)
                 mesh.MoveVertice(i, pos + (Vector2)leafVertices[i / 4, i % 4]);
 
-            Vector3 n = FCustom.CrossProduct(leafVertices[2, 2] - leafVertices[2, 0], leafVertices[2, 1] - leafVertices[2, 0]);
             angleText.x = pos.x;
-            angleText.y = pos.y - 50f;
-            angleText.text = $"Q_v:{Q}\nQ_rt:{Qr}\nAngle: {(int)(rotation * 180f / Mathf.PI)}\n{n}";
-
-            //mesh = sLeaser.sprites[1] as TriangleMesh;
-            //for (int i = 0; i < 2; i++)
-            //{
-            //    Vector2 v = new Vector2(-30f + 30f * i, 30f + 30f * i);
-            //    mesh.MoveVertice(i * 4 + 0, pos + v + new Vector2(-10f, 10f));
-            //    mesh.MoveVertice(i * 4 + 1, pos + v + new Vector2(10f, 10f));
-            //    mesh.MoveVertice(i * 4 + 2, pos + v + new Vector2(-10f, -10f));
-            //    mesh.MoveVertice(i * 4 + 3, pos + v + new Vector2(10f, -10f));
-            //}
+            angleText.y = pos.y - 75f;
+            angleText.text = $"Q_v:{Q}\nQ_rt:{Qr}\nAngle: {(int)(rotation * 180f / Mathf.PI)}";
         }
 
         public void ApplyPalette(RoomCamera.SpriteLeaser sLeaser, RoomCamera rCam, RoomPalette palette)
@@ -158,7 +146,6 @@ namespace Silvermist
                 Color main = new(0.25f, 0.05f, 0.45f), second = Color.green;
                 float fl = i / (float)(leafVertices.GetLength(0) / 2f), fh = (i + 1) / (float)(leafVertices.GetLength(0) / 2f);
                 Color cl = Color.Lerp(b ? main : second, b ? second : main, fl - (b ? 0.2f : -0.2f)), ch = Color.Lerp(b ? main : second, b ? second : main, fh - (b ? 0.2f : -0.2f));
-                //Vector3 n = FCustom.CrossProduct(mesh.vertices[i * 8 + 2] - mesh.vertices[i * 8], mesh.vertices[i * 8 + 1] - mesh.vertices[i * 8]);
                 mesh.verticeColors[i * 8 + 0] = Color.Lerp(b ? ch : cl, palette.blackColor, 0.3f);
                 mesh.verticeColors[i * 8 + 1] = Color.Lerp(b ? ch : cl, palette.blackColor, 0.3f);
                 mesh.verticeColors[i * 8 + 2] = Color.Lerp(b ? cl : ch, palette.blackColor, 0.3f);
@@ -168,13 +155,6 @@ namespace Silvermist
                 mesh.verticeColors[i * 8 + 6] = Color.Lerp(b ? cl : ch, palette.blackColor, 0.3f);
                 mesh.verticeColors[i * 8 + 7] = Color.Lerp(b ? cl : ch, palette.blackColor, 0.3f);
             }
-            mesh.verticeColors[8] = Color.red;
-            mesh.verticeColors[9] = Color.red;
-            mesh.verticeColors[10] = Color.red;
-            mesh.verticeColors[11] = Color.red;
-            //mesh = sLeaser.sprites[1] as TriangleMesh;
-            //for (int i = 0; i < mesh.verticeColors.Length; i++)
-            //    mesh.verticeColors[i] = Color.red;
         }
 
         public void AddToContainer(RoomCamera.SpriteLeaser sLeaser, RoomCamera rCam, FContainer newContatiner)
