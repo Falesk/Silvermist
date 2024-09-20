@@ -257,7 +257,7 @@ namespace Silvermist
             if (mode == Mode.StuckInWall && stuckInObject != null)
             {
                 Vector2 v = StuckInChunk.pos - pos;
-                float angR = Mathf.Acos(v.x / v.magnitude) + ((v.y > 0) ? 0f : 2f * Mathf.Acos(-v.x / v.magnitude));
+                float angR = Mathf.Acos(v.x / v.magnitude) * ((v.y > 0) ? 1 : -1f);
                 float dist = Vector2.Distance(pos, StuckInChunk.pos);
                 sLeaser.sprites[0].x = pos.x - camPos.x + 5f * Mathf.Cos(angR) * (dist / 30f);
                 sLeaser.sprites[0].y = pos.y - camPos.y + 5f * Mathf.Sin(angR) * (dist / 30f);

@@ -5,6 +5,8 @@ namespace Silvermist
 {
     public static class FCustom
     {
+        public const float FI = 0.618034f;
+
         public static Vector2 TrimmedAnchors(FAtlasElement element)
         {
             Vector2 anchors = element.sourceRect.center / element.sourceSize;
@@ -43,9 +45,9 @@ namespace Silvermist
             return BezierT(t, pointsNext);
         }
 
-        public static Vector3[,] ReverseIfNecessary(Vector3[,] vs)
+        public static Vector3[,] ReverseIfNecessary(Vector3[,] vs, float ang = 0)
         {
-            if (vs[0, 0].z > vs[vs.GetLength(0) - 1, 0].z)
+            if (ang < Mathf.PI)
                 for (int i = 0; i < vs.GetLength(0) / 2; i++)
                     for (int j = 0; j < vs.GetLength(1); j++)
                         (vs[i, j], vs[vs.GetLength(0) - 1 - i, j]) = (vs[vs.GetLength(0) - 1 - i, j], vs[i, j]);
