@@ -30,19 +30,20 @@ namespace Silvermist
             buoyancy = 0.1f;
             Random.State state = Random.state;
             Random.InitState(abstr.ID.RandomSeed);
-            stalkSegments = new Vector2[Random.Range(8, 15), 2];
+            stalkSegments = new Vector2[Random.Range(30, 43), 2];
             stalkSegs = stalkSegments.GetLength(0);
-            SetStalkSegs();
-            twilight = Random.value < 0.5f;
+            SetStalkSegments();
+            twilight = Random.value < 0.66f;
             if (twilight)
-                color = Custom.HSL2RGB(Custom.WrappedRandomVariation(0.8f, 0.05f, 0.6f), 1f, Custom.ClampedRandomVariation(0.5f, 0.15f, 0.1f));
+                color = Random.value < 0.5f ? Custom.HSL2RGB(Custom.WrappedRandomVariation(0.8f, 0.07f, 0.6f), 1f, Custom.ClampedRandomVariation(0.5f, 0.15f, 0.1f)) :
+                    Custom.HSL2RGB(Custom.WrappedRandomVariation(0.05f, 0.03f, 0.6f), 1f, Custom.ClampedRandomVariation(0.5f, 0.15f, 0.1f));
             else color = Custom.HSL2RGB(Custom.WrappedRandomVariation(0.1f, 0.05f, 0.6f), 1f, Custom.ClampedRandomVariation(0.5f, 0.15f, 0.1f));
             leaves = new Leaf[Random.Range(8, 17)];
             float randAng = Mathf.Lerp(0f, Mathf.PI * 2f, Random.value);
             for (int i = 0; i < leaves.Length; i++)
             {
-                float len = Random.Range(60f, 90f) * Mathf.Lerp(1f, 1.2f, Mathf.InverseLerp(8, 14, stalkSegs));
-                Vector2[] Ps = ResolveLeafSegments(len, i < leaves.Length / 2);
+                float len = Random.Range(60f, 90f) * Mathf.Lerp(0.8f, 1.2f, Mathf.InverseLerp(30, 42, stalkSegs));
+                Vector2[] Ps = SetLeafSegments(len, i < leaves.Length / 2);
                 float ang = randAng + i * 2f * Mathf.PI * (1f - FCustom.FI) + Mathf.Lerp(-Mathf.PI / 30f, Mathf.PI / 30f, Random.value);
                 Color cl1 = twilight ? new(Mathf.Lerp(-0.05f, 0.05f, Random.value), Mathf.Lerp(-0.05f, 0.05f, Random.value), Mathf.Lerp(-0.05f, 0.05f, Random.value)) : new (Mathf.Lerp(-0.05f, 0.15f, Random.value), Mathf.Lerp(-0.05f, 0.15f, Random.value), Mathf.Lerp(-0.05f, 0.15f, Random.value));
                 Color cl2 = twilight ? new(Mathf.Lerp(-0.03f, 0.03f, Random.value), Mathf.Lerp(-0.03f, 0.03f, Random.value), Mathf.Lerp(-0.03f, 0.03f, Random.value)) : new(Mathf.Lerp(-0.05f, 0.08f, Random.value), Mathf.Lerp(-0.05f, 0.08f, Random.value), Mathf.Lerp(-0.05f, 0.08f, Random.value));
@@ -114,29 +115,25 @@ namespace Silvermist
             firstChunk.HardSetPosition(new Vector2(rootPos.x, rootPos.y + 10f));
         }
 
-        public void SetStalkSegs()
+        public void SetStalkSegments()
         {
-            Vector2 lastV = Vector2.up;
-            Vector2 slope = lastV;
-            for (int i = 0; i < stalkSegments.GetLength(0); i++) {
-                float ctan = slope.x / slope.y;
-                float num = 0f;
-                if (ctan > 0.36f) num = -0.3f;
-                else if (ctan < -0.36f) num = 0.3f;
-                else if (Mathf.Abs(ctan) > 0.2f) num = Mathf.Lerp(0f, ctan / 3f, Random.value);
-                stalkSegments[i, 0] = (lastV + new Vector2(Mathf.Lerp(-0.2f + num, 0.2f + num, Random.value), 0f)).normalized;
+            Vector2 P1 = new Vector2(0f, stalkSegs * 2.5f) + new Vector2(Mathf.Lerp(-15, 15, Random.value), Mathf.Lerp(-15, 15, Random.value));
+            Vector2 P2 = new Vector2(0f, stalkSegs * 2.5f) + new Vector2(Mathf.Lerp(-15, 15, Random.value), Mathf.Lerp(-15, 15, Random.value));
+            Vector2 P3 = new Vector2(0f, stalkSegs * 5f) + new Vector2(Mathf.Lerp(-15, 15, Random.value), Mathf.Lerp(-15, 15, Random.value));
+            Vector2[] points = FCustom.BezierCurve(stalkSegs, P1, P2, P3);
+            for (int i = 0; i < stalkSegs; i++)
+            {
+                stalkSegments[i, 0] = points[i];
                 stalkSegments[i, 1] *= 0f;
-                lastV = stalkSegments[i, 0];
-                slope = (slope + lastV).normalized;
             }
         }
 
-        public Vector2[] ResolveLeafSegments(float len, bool straight)
+        public Vector2[] SetLeafSegments(float len, bool straight)
         {
             Vector2 P1 = (straight ? new Vector2(25f, 20f) : new Vector2(25f, 10f)) + new Vector2(Mathf.Lerp(-8f, 8f, Random.value), Mathf.Lerp(-8f, 8f, Random.value));
             Vector2 P2 = (straight ? new Vector2(30f, 50f) : new Vector2(30f, 30f)) + new Vector2(Mathf.Lerp(-8f, 8f, Random.value), Mathf.Lerp(-8f, 8f, Random.value));
             Vector2 P3 = (straight ? new Vector2(45f, 50f) : new Vector2(60f, 5f)) + new Vector2(Mathf.Lerp(-8f, 8f, Random.value), Mathf.Lerp(-8f, 8f, Random.value));
-            float m = Mathf.Lerp(0.8f, 1.2f, Mathf.InverseLerp(60f, 110f, len));
+            float m = Mathf.Lerp(0.7f, 1.2f, Mathf.InverseLerp(50f, 110f, len));
             return [P1 * m, P2 * m, P3 * m];
         }
 
@@ -151,7 +148,6 @@ namespace Silvermist
                 {
                     (leaves[j], leaves[i]) = (leaves[i], leaves[j]);
                     sLeaser.sprites[j] = leaves[j].InitTriangleMesh();
-                    //sLeaser.sprites[j].shader = rCam.room.game.rainWorld.Shaders["TentaclePlant"];
                     j++;
                 }
             }
@@ -161,7 +157,6 @@ namespace Silvermist
             for (int i = j - 1; i < leaves.Length; i++)
             {
                 sLeaser.sprites[j] = leaves[i].InitTriangleMesh();
-                //sLeaser.sprites[j].shader = rCam.room.game.rainWorld.Shaders["TentaclePlant"];
                 j++;
             }
 
@@ -197,19 +192,21 @@ namespace Silvermist
                 ApplyPalette(sLeaser, rCam, rCam.currentPalette);
 
             TriangleMesh mesh = sLeaser.sprites[stalkSprite] as TriangleMesh;
-            Vector2 prevTilt = new (2.5f, 0f);
-            Vector2 point = rootPos - camPos;
+            Vector2 prevSlp = new (3f, 0f), prevVec = Vector2.zero, point = rootPos - camPos;
 
             for (int i = 0; i < stalkSegs; i++) {
-                float num = Mathf.Lerp(5f, 0f, i / (float)(stalkSegs - 1));
-                Vector2 v = stalkSegments[i, 0];
-                Vector2 t = 0.5f * num * v;
-                mesh.MoveVertice(i * 4 + 0, point + v * 15f + new Vector2(t.y, -t.x));
-                mesh.MoveVertice(i * 4 + 1, point + v * 15f + new Vector2(-t.y, t.x));
-                mesh.MoveVertice(i * 4 + 2, point + prevTilt);
-                mesh.MoveVertice(i * 4 + 3, point - prevTilt);
-                prevTilt = new Vector2(v.y, -v.x);
-                point += v * 15f;
+                float num = Mathf.Lerp(3f, 0.2f, i / (float)stalkSegs);
+                Vector2 v = (stalkSegments[i, 0] - prevVec).normalized;
+                Vector2 t = num * v;
+                t = new Vector2(t.y, -t.x);
+                v *= 7f;
+                Vector2 ps = point + prevVec;
+                mesh.MoveVertice(i * 4 + 0, ps + v - t);
+                mesh.MoveVertice(i * 4 + 1, ps + v + t);
+                mesh.MoveVertice(i * 4 + 2, ps - prevSlp);
+                mesh.MoveVertice(i * 4 + 3, ps + prevSlp);
+                prevSlp = t;
+                prevVec = stalkSegments[i, 0];
             }
             for (int i = 0, j = 0; i < TotalSprites; i++)
             {
