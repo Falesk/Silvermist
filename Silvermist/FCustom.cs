@@ -6,6 +6,7 @@ namespace Silvermist
     public static class FCustom
     {
         public const float FI = 0.618034f;
+        public const float gAngle = 2f * Mathf.PI * (1f - FI);
 
         public static Vector2 TrimmedAnchors(FAtlasElement element)
         {

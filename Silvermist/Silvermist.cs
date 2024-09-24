@@ -8,6 +8,7 @@ namespace Silvermist
     public class Silvermist : PhysicalObject, IDrawable
     {
         public Leaf[] leaves;
+        public Petal[] petals;
         public Vector2 placedPos, rootPos;
         public Vector2[,] stalkSegments;
         public Color color;
@@ -15,7 +16,7 @@ namespace Silvermist
         public int stalkSegs, stalkSprite;
         public bool twilight;
         public AbstractConsumable AbstractSilvermist => abstractPhysicalObject as AbstractConsumable;
-        public int TotalSprites => 1 + leaves.Length;
+        public int TotalSprites => 1 + leaves.Length + petals.Length * 1;
 
         public Silvermist(AbstractPhysicalObject abstr) : base(abstr)
         {
@@ -30,31 +31,16 @@ namespace Silvermist
             buoyancy = 0.1f;
             Random.State state = Random.state;
             Random.InitState(abstr.ID.RandomSeed);
-            stalkSegments = new Vector2[Random.Range(30, 43), 2];
-            stalkSegs = stalkSegments.GetLength(0);
-            SetStalkSegments();
             twilight = Random.value < 0.66f;
             if (twilight)
                 color = Random.value < 0.5f ? Custom.HSL2RGB(Custom.WrappedRandomVariation(0.8f, 0.07f, 0.6f), 1f, Custom.ClampedRandomVariation(0.5f, 0.15f, 0.1f)) :
                     Custom.HSL2RGB(Custom.WrappedRandomVariation(0.05f, 0.03f, 0.6f), 1f, Custom.ClampedRandomVariation(0.5f, 0.15f, 0.1f));
             else color = Custom.HSL2RGB(Custom.WrappedRandomVariation(0.1f, 0.05f, 0.6f), 1f, Custom.ClampedRandomVariation(0.5f, 0.15f, 0.1f));
-            leaves = new Leaf[Random.Range(8, 17)];
-            float randAng = Mathf.Lerp(0f, Mathf.PI * 2f, Random.value);
-            for (int i = 0; i < leaves.Length; i++)
-            {
-                float len = Random.Range(60f, 90f) * Mathf.Lerp(0.8f, 1.2f, Mathf.InverseLerp(30, 42, stalkSegs));
-                Vector2[] Ps = SetLeafSegments(len, i < leaves.Length / 2);
-                float ang = randAng + i * 2f * Mathf.PI * (1f - FCustom.FI) + Mathf.Lerp(-Mathf.PI / 30f, Mathf.PI / 30f, Random.value);
-                Color cl1 = twilight ? new(Mathf.Lerp(-0.05f, 0.05f, Random.value), Mathf.Lerp(-0.05f, 0.05f, Random.value), Mathf.Lerp(-0.05f, 0.05f, Random.value)) : new (Mathf.Lerp(-0.05f, 0.15f, Random.value), Mathf.Lerp(-0.05f, 0.15f, Random.value), Mathf.Lerp(-0.05f, 0.15f, Random.value));
-                Color cl2 = twilight ? new(Mathf.Lerp(-0.03f, 0.03f, Random.value), Mathf.Lerp(-0.03f, 0.03f, Random.value), Mathf.Lerp(-0.03f, 0.03f, Random.value)) : new(Mathf.Lerp(-0.05f, 0.08f, Random.value), Mathf.Lerp(-0.05f, 0.08f, Random.value), Mathf.Lerp(-0.05f, 0.08f, Random.value));
-                Color c1 = Color.Lerp(Color.black, twilight ? new(0f, 0.3f, 0f) : new(0.1f, 0.65f, 0.1f), Mathf.Lerp(0.4f, 1f, Mathf.Pow(Mathf.Sin(ang / 2f - Mathf.PI / 4f), 2))) + cl1;
-                Color c2 = Color.Lerp(Color.black, new(0.25f, 0.12f, 0.45f), Mathf.Lerp(0.4f, 1f, Mathf.Pow(Mathf.Sin(ang / 2f - Mathf.PI / 4f), 2))) + cl2;
-                leaves[i] = new Leaf(this, ang, Ps)
-                {
-                    main = twilight ? c2 : c1,
-                    second = twilight ? c1 : c2
-                };
-            }
+            stalkSegments = new Vector2[Random.Range(30, 43), 2];
+            stalkSegs = stalkSegments.GetLength(0);
+            SetStalkSegments();
+            CreateLeaves();
+            CreatePetals();
             Random.state = state;
         }
 
@@ -115,6 +101,44 @@ namespace Silvermist
             firstChunk.HardSetPosition(new Vector2(rootPos.x, rootPos.y + 10f));
         }
 
+        public void CreateLeaves()
+        {
+            leaves = new Leaf[Random.Range(8, 15)];
+            float randAng = Mathf.Lerp(0f, Mathf.PI * 2f, Random.value);
+            for (int i = 0; i < leaves.Length; i++)
+            {
+                float len = Random.Range(60f, 90f) * Mathf.Lerp(0.8f, 1.2f, Mathf.InverseLerp(30, 42, stalkSegs));
+                Vector2[] Ps = SetLeafSegments(len, i < leaves.Length / 2);
+                float ang = randAng + i * FCustom.gAngle + Mathf.Lerp(-Mathf.PI / 30f, Mathf.PI / 30f, Random.value);
+                Color cl1 = twilight ? new(Mathf.Lerp(-0.05f, 0.05f, Random.value), Mathf.Lerp(-0.05f, 0.05f, Random.value), Mathf.Lerp(-0.05f, 0.05f, Random.value)) :
+                    new(Mathf.Lerp(-0.05f, 0.15f, Random.value), Mathf.Lerp(-0.05f, 0.15f, Random.value), Mathf.Lerp(-0.05f, 0.15f, Random.value));
+                Color cl2 = twilight ? new(Mathf.Lerp(-0.03f, 0.03f, Random.value), Mathf.Lerp(-0.03f, 0.03f, Random.value), Mathf.Lerp(-0.03f, 0.03f, Random.value)) :
+                    new(Mathf.Lerp(-0.05f, 0.08f, Random.value), Mathf.Lerp(-0.05f, 0.08f, Random.value), Mathf.Lerp(-0.05f, 0.08f, Random.value));
+                Color c1 = Color.Lerp(Color.black, twilight ? new(0f, 0.3f, 0f) : new(0.1f, 0.65f, 0.1f), Mathf.Lerp(0.4f, 1f, Mathf.Pow(Mathf.Sin(ang / 2f - Mathf.PI / 4f), 2))) + cl1;
+                Color c2 = Color.Lerp(Color.black, new(0.25f, 0.12f, 0.45f), Mathf.Lerp(0.4f, 1f, Mathf.Pow(Mathf.Sin(ang / 2f - Mathf.PI / 4f), 2))) + cl2;
+                leaves[i] = new Leaf(this, ang, Ps)
+                {
+                    clrMain = twilight ? c2 : c1,
+                    clrSecond = twilight ? c1 : c2
+                };
+            }
+        }
+
+        public void CreatePetals()
+        {
+            int len = (int)(stalkSegs / 2.5f);
+            len -= (len % 2 == 0) ? 1 : 0;
+            petals = new Petal[len];
+            float t = 90 - Mathf.Lerp(35, 50, Random.value);
+            for (int i = 0; i < len; i++)
+            {
+                Vector2 attachPos = stalkSegments[5 * (i / 2) + 2, 0];
+                float size = 6f * Mathf.Lerp(0.8f, 1.2f, Mathf.InverseLerp(30, 42, stalkSegs)) * Mathf.Lerp(1f, 0.5f, 2f * (i / 2) / (len - 1));
+                float ang = 90 + Custom.VecToDeg(attachPos) + ((i % 2 == 0 ? t : -t) * Mathf.InverseLerp(1, 0, Mathf.Pow(i / (float)(len - 1), 3f))) + Mathf.Lerp(-5, 5, Random.value);
+                petals[i] = new Petal(this, attachPos, size, ang);
+            }
+        }
+
         public void SetStalkSegments()
         {
             Vector2 P1 = new Vector2(0f, stalkSegs * 2.5f) + new Vector2(Mathf.Lerp(-15, 15, Random.value), Mathf.Lerp(-15, 15, Random.value));
@@ -137,49 +161,44 @@ namespace Silvermist
             return [P1 * m, P2 * m, P3 * m];
         }
 
+        public void SortLeaves()
+        {
+            int j = 0;
+            for (int i = 0; i < leaves.Length; i++)
+                if (leaves[i].angle < Mathf.PI) {
+                    (leaves[j], leaves[i]) = (leaves[i], leaves[j]);
+                    j++;
+                }
+            stalkSprite = j;
+            for (int i = 0, k = 0; i < j; i++)
+                if (leaves[i].mainPoints[leaves[i].mainPoints.Length - 1].y < 40f) {
+                    (leaves[k], leaves[i]) = (leaves[i], leaves[k]);
+                    k++;
+                }
+            for (int i = j, k = 0; i < leaves.Length; i++)
+                if (leaves[i].mainPoints[leaves[i].mainPoints.Length - 1].y > 40f) {
+                    (leaves[k], leaves[i]) = (leaves[i], leaves[k]);
+                    k++;
+                }
+        }
+
         public void InitiateSprites(RoomCamera.SpriteLeaser sLeaser, RoomCamera rCam)
         {
             sLeaser.sprites = new FSprite[TotalSprites];
-
-            int j = 0;
-            for (int i = 0; i < leaves.Length; i++)
-            {
-                if (leaves[i].angle < Mathf.PI)
-                {
-                    (leaves[j], leaves[i]) = (leaves[i], leaves[j]);
-                    sLeaser.sprites[j] = leaves[j].InitTriangleMesh();
-                    j++;
-                }
-            }
-            stalkSprite = j;
+            SortLeaves();
+            for (int i = 0; i < stalkSprite; i++)
+                sLeaser.sprites[i] = leaves[i].InitTriangleMesh();
             sLeaser.sprites[stalkSprite] = TriangleMesh.MakeLongMesh(stalkSegs, false, true);
-            j++;
-            for (int i = j - 1; i < leaves.Length; i++)
-            {
-                sLeaser.sprites[j] = leaves[i].InitTriangleMesh();
-                j++;
-            }
 
-            j = 0;
-            for (int i = j; i < stalkSprite; i++)
+            int n = stalkSprite + 1;
+            for (int i = petals.Length - 1; i >= 0; i--)
             {
-                if (leaves[i].mainPoints[leaves[i].mainPoints.Length - 1].y < 40f)
-                {
-                    (leaves[j], leaves[i]) = (leaves[i], leaves[j]);
-                    (sLeaser.sprites[j], sLeaser.sprites[i]) = (sLeaser.sprites[i], sLeaser.sprites[j]);
-                    j++;
-                }
+                FSprite[] sprs = petals[i].InitSprites();
+                for (int j = 0; j < sprs.Length; j++)
+                    sLeaser.sprites[n++] = sprs[j];
             }
-            j = stalkSprite + 1;
-            for (int i = j; i < TotalSprites; i++)
-            {
-                if (leaves[i - 1].mainPoints[leaves[i - 1].mainPoints.Length - 1].y > 40f)
-                {
-                    (leaves[j - 1], leaves[i - 1]) = (leaves[i - 1], leaves[j - 1]);
-                    (sLeaser.sprites[j], sLeaser.sprites[i]) = (sLeaser.sprites[i], sLeaser.sprites[j]);
-                    j++;
-                }
-            }
+            for (int i = stalkSprite; i < leaves.Length; i++)
+                sLeaser.sprites[n++] = leaves[i].InitTriangleMesh();
             AddToContainer(sLeaser, rCam, null);
         }
 
@@ -193,7 +212,6 @@ namespace Silvermist
 
             TriangleMesh mesh = sLeaser.sprites[stalkSprite] as TriangleMesh;
             Vector2 prevSlp = new (3f, 0f), prevVec = Vector2.zero, point = rootPos - camPos;
-
             for (int i = 0; i < stalkSegs; i++) {
                 float num = Mathf.Lerp(3f, 0.2f, i / (float)stalkSegs);
                 Vector2 v = (stalkSegments[i, 0] - prevVec).normalized;
@@ -208,11 +226,10 @@ namespace Silvermist
                 prevSlp = t;
                 prevVec = stalkSegments[i, 0];
             }
-            for (int i = 0, j = 0; i < TotalSprites; i++)
-            {
-                if (i != stalkSprite) leaves[i - j].Draw(sLeaser.sprites[i] as TriangleMesh, camPos, rCam.currentPalette);
-                else j++;
-            }
+            for (int i = 0; i < leaves.Length; i++)
+                leaves[i].Draw(camPos, rCam.currentPalette);
+            for (int i = 0; i < petals.Length; i++)
+                petals[i].Draw(camPos, rCam.currentPalette);
 
             if (slatedForDeletetion || rCam.room != room)
                 sLeaser.CleanSpritesAndRemove();
@@ -241,10 +258,11 @@ namespace Silvermist
         public class Leaf
         {
             public Silvermist owner;
+            public TriangleMesh mesh;
             public Quaternion Qr;
             public Vector2[] mainPoints;
             public Vector3[,] leafVertices;
-            public Color main, second;
+            public Color clrMain, clrSecond;
             public int segments = 10;
             public float angle;
             public bool dirtyUpdate, dirtyPalette;
@@ -295,24 +313,102 @@ namespace Silvermist
                 }
             }
 
-            public TriangleMesh InitTriangleMesh() => TriangleMesh.MakeLongMesh(2 * segments, false, true);
-            public void Draw(TriangleMesh mesh, Vector2 camPos, RoomPalette palette)
+            public TriangleMesh InitTriangleMesh()
+            {
+                mesh = TriangleMesh.MakeLongMesh(2 * segments, false, true);
+                return mesh;
+            }
+
+            public void Draw(Vector2 camPos, RoomPalette palette)
             {
                 Vector2 pos = owner.rootPos - camPos;
-                ApplyPalette(mesh, palette);
+                ApplyPalette(palette);
 
                 for (int i = 0; i < mesh.vertices.Length; i++)
                     mesh.MoveVertice(i, pos + (Vector2)leafVertices[i / 4, i % 4]);
             }
-            public void ApplyPalette(TriangleMesh mesh, RoomPalette palette)
+
+            public void ApplyPalette(RoomPalette palette)
             {
                 for (int i = 0; i < mesh.verticeColors.Length / 8; i++)
                 {
                     bool b = leafVertices[0, 2].z == 0f;
                     float fl = i / (float)(leafVertices.GetLength(0) / 2f), fh = (i + 1) / (float)(leafVertices.GetLength(0) / 2f);
-                    Color cl = Color.Lerp(b ? second : main, b ? main : second, fl + (b || owner.twilight ? -0.2f : 0.2f) + (owner.twilight ? 0.3f : 0f)), ch = Color.Lerp(b ? second : main, b ? main : second, fh + (b || owner.twilight ? -0.2f : 0.2f) + (owner.twilight ? 0.3f : 0f));
+                    Color cl = Color.Lerp(b ? clrSecond : clrMain, b ? clrMain : clrSecond, fl + (b || owner.twilight ? -0.2f : 0.2f) + (owner.twilight ? 0.3f : 0f)), ch = Color.Lerp(b ? clrSecond : clrMain, b ? clrMain : clrSecond, fh + (b || owner.twilight ? -0.2f : 0.2f) + (owner.twilight ? 0.3f : 0f));
                     for (int j = 0; j < 8; j++)
                         mesh.verticeColors[i * 8 + j] = Color.Lerp(j % 4 < 2 ? (b ? ch : cl) : (b ? cl : ch), palette.blackColor, Mathf.Pow(owner.darkness, 2));
+                }
+            }
+        }
+
+        public class Petal
+        {
+            public Silvermist owner;
+            public FSprite[] sprites;
+            public Vector2[] points;
+            public Vector2 pos;
+            public float size, angle;
+
+            public Petal(Silvermist silvermist, Vector2 attachPos, float _size, float ang)
+            {
+                owner = silvermist;
+                pos = attachPos;
+                size = _size;
+                angle = ang;
+                points = new Vector2[4];
+                Vector2 p = Vector2.zero, prevDir = Vector2.right;
+                for (int i = 0; i < 4; i++)
+                {
+                    Vector2 d = FCustom.RotateVector(prevDir, Mathf.Lerp(-7f, 7f, Random.value));
+                    points[i] = p + d;
+                    prevDir = d;
+                    p += d;
+                }
+            }
+
+            public FSprite[] InitSprites()
+            {
+                FSprite[] fSprites = [TriangleMesh.MakeLongMesh(4, false, true)];
+                sprites = fSprites;
+                return sprites;
+            }
+
+            public void Draw(Vector2 camPos, RoomPalette palette)
+            {
+                Vector2 p = owner.rootPos + pos - camPos;
+                ApplyPalette(palette);
+
+                TriangleMesh mesh = sprites[0] as TriangleMesh;
+                mesh.SetPosition(p);
+                p = Vector2.zero;
+                Vector2 prev = Vector2.zero, prevPerp = Vector2.up;
+                float t = size / 2f;
+                for (int i = 0; i < 4; i++)
+                {
+                    Vector2 v = points[i] - prev;
+                    Vector2 perp = Custom.PerpendicularVector(v);
+                    float m = (i == 3) ? 0f : 1f;
+                    t *= (i == 3) ? 0.5f : 1f;
+                    mesh.MoveVertice(i * 4 + 0, p + t * v + m * perp);
+                    mesh.MoveVertice(i * 4 + 1, p + t * v - m * perp);
+                    mesh.MoveVertice(i * 4 + 2, p + prevPerp);
+                    mesh.MoveVertice(i * 4 + 3, p - prevPerp);
+                    prevPerp = perp;
+                    prev = v;
+                    p += t * v;
+                }
+                mesh.rotation = -angle;
+            }
+
+            public void ApplyPalette(RoomPalette palette)
+            {
+                TriangleMesh mesh = sprites[0] as TriangleMesh;
+                Color cm = Color.Lerp(owner.color, palette.blackColor, 0.25f);
+                Color cs = Color.Lerp(owner.color, Color.white, 0.25f);
+                for (int i = 0; i < mesh.verticeColors.Length; i++)
+                {
+                    if (i < mesh.vertices.Length - 8) mesh.verticeColors[i] = Color.Lerp(cm, palette.blackColor, owner.darkness);
+                    else mesh.verticeColors[i] = Color.Lerp((i % 4 < 2 || i > mesh.vertices.Length - 5) ? cs : cm, palette.blackColor, owner.darkness);
                 }
             }
         }
