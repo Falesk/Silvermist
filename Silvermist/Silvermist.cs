@@ -16,7 +16,7 @@ namespace Silvermist
         public int stalkSegs, stalkSprite;
         public bool twilight;
         public AbstractConsumable AbstractSilvermist => abstractPhysicalObject as AbstractConsumable;
-        public int TotalSprites => 1 + leaves.Length + petals.Length * 1;
+        public int TotalSprites => 1 + leaves.Length + petals.Length * 4;
 
         public Silvermist(AbstractPhysicalObject abstr) : base(abstr)
         {
@@ -59,6 +59,8 @@ namespace Silvermist
             }
             for (int i = 0; i < leaves.Length; i++)
                 leaves[i].Update();
+            for (int i = 0; i < petals.Length; i++)
+                petals[i].Update();
         }
 
         public override void PlaceInRoom(Room placeRoom)
@@ -132,10 +134,10 @@ namespace Silvermist
             float t = 90 - Mathf.Lerp(35, 50, Random.value);
             for (int i = 0; i < len; i++)
             {
-                Vector2 attachPos = stalkSegments[5 * (i / 2) + 2, 0];
+                Vector2 attachPos = stalkSegments[(int)(i * 2.5f) + 2, 0];
                 float size = 6f * Mathf.Lerp(0.8f, 1.2f, Mathf.InverseLerp(30, 42, stalkSegs)) * Mathf.Lerp(1f, 0.5f, 2f * (i / 2) / (len - 1));
-                float ang = 90 + Custom.VecToDeg(attachPos) + ((i % 2 == 0 ? t : -t) * Mathf.InverseLerp(1, 0, Mathf.Pow(i / (float)(len - 1), 3f))) + Mathf.Lerp(-5, 5, Random.value);
-                petals[i] = new Petal(this, attachPos, size, ang);
+                float ang = 90 + Custom.VecToDeg(attachPos) + ((i % 2 == 0 ? 1.2f * t : -t) * Mathf.InverseLerp(1, 0, Mathf.Pow((i / 2) / (float)((len - 1) / 2), 3f))) + Mathf.Lerp(-5, 5, Random.value);
+                petals[i] = new Petal(this, attachPos, size, ang, i);
             }
         }
 
@@ -193,7 +195,7 @@ namespace Silvermist
             int n = stalkSprite + 1;
             for (int i = petals.Length - 1; i >= 0; i--)
             {
-                FSprite[] sprs = petals[i].InitSprites();
+                FSprite[] sprs = petals[i].InitSprites(rCam);
                 for (int j = 0; j < sprs.Length; j++)
                     sLeaser.sprites[n++] = sprs[j];
             }
@@ -347,14 +349,17 @@ namespace Silvermist
             public FSprite[] sprites;
             public Vector2[] points;
             public Vector2 pos;
-            public float size, angle;
+            public float size, angle, nectarGrowth;
+            public int level, index;
 
-            public Petal(Silvermist silvermist, Vector2 attachPos, float _size, float ang)
+            public Petal(Silvermist silvermist, Vector2 attachPos, float _size, float ang, int st)
             {
                 owner = silvermist;
                 pos = attachPos;
                 size = _size;
                 angle = ang;
+                index = st;
+                level = st / 2;
                 points = new Vector2[4];
                 Vector2 p = Vector2.zero, prevDir = Vector2.right;
                 for (int i = 0; i < 4; i++)
@@ -366,9 +371,23 @@ namespace Silvermist
                 }
             }
 
-            public FSprite[] InitSprites()
+            public void Update()
             {
-                FSprite[] fSprites = [TriangleMesh.MakeLongMesh(4, false, true)];
+                nectarGrowth += (nectarGrowth >= 1) ? 0f : 0.005f * Mathf.Lerp(0.8f, 1.2f, Random.value);
+                nectarGrowth = Mathf.Clamp01(nectarGrowth);
+            }
+
+            public FSprite[] InitSprites(RoomCamera rCam)
+            {
+                var spr = Futile.atlasManager.GetElementWithName("Cicada1body");
+                Vector2 anchors = FCustom.TrimmedAnchors(spr) / 2f;
+                FSprite[] fSprites =
+                [
+                    new FSprite(spr) { anchorX = anchors.x, anchorY = anchors.y, isVisible = false },
+                    TriangleMesh.MakeLongMesh(4, false, true),
+                    new FSprite("Futile_White") { shader = rCam.game.rainWorld.Shaders["WaterNut"] },
+                    new FSprite("Futile_White") { isVisible = false }
+                ];
                 sprites = fSprites;
                 return sprites;
             }
@@ -378,7 +397,7 @@ namespace Silvermist
                 Vector2 p = owner.rootPos + pos - camPos;
                 ApplyPalette(palette);
 
-                TriangleMesh mesh = sprites[0] as TriangleMesh;
+                TriangleMesh mesh = sprites[1] as TriangleMesh;
                 mesh.SetPosition(p);
                 p = Vector2.zero;
                 Vector2 prev = Vector2.zero, prevPerp = Vector2.up;
@@ -398,11 +417,21 @@ namespace Silvermist
                     p += t * v;
                 }
                 mesh.rotation = -angle;
+
+                sprites[2].SetPosition(mesh.GetPosition() + FCustom.RotateVector(mesh.vertices[15], angle));
+                float num = Mathf.Pow(Mathf.InverseLerp(1, 0, level / (float)(owner.petals.Length / 2f)), 0.75f);
+                sprites[2].scaleX = nectarGrowth * size / 4 * num;
+                sprites[2].scaleY = nectarGrowth * size / 6 * num;
+                sprites[2].rotation = -angle;
+
+                //sprites[0].SetPosition(mesh.GetPosition());
+                //sprites[0].rotation = (index % 2 == 0 ? 1 : -1) * angle / 2f - (index % 2 == 0 ? 0 : 180);
+                //sprites[0].scale = size / 7f * (num + 0.5f);
             }
 
             public void ApplyPalette(RoomPalette palette)
             {
-                TriangleMesh mesh = sprites[0] as TriangleMesh;
+                TriangleMesh mesh = sprites[1] as TriangleMesh;
                 Color cm = Color.Lerp(owner.color, palette.blackColor, 0.25f);
                 Color cs = Color.Lerp(owner.color, Color.white, 0.25f);
                 for (int i = 0; i < mesh.verticeColors.Length; i++)
@@ -410,6 +439,8 @@ namespace Silvermist
                     if (i < mesh.vertices.Length - 8) mesh.verticeColors[i] = Color.Lerp(cm, palette.blackColor, owner.darkness);
                     else mesh.verticeColors[i] = Color.Lerp((i % 4 < 2 || i > mesh.vertices.Length - 5) ? cs : cm, palette.blackColor, owner.darkness);
                 }
+                sprites[0].color = Color.Lerp(Color.Lerp(owner.color, palette.blackColor, 0.5f), palette.blackColor, owner.darkness);
+                sprites[2].color = Color.Lerp(cs, Color.white, 0.6f);
             }
         }
     }

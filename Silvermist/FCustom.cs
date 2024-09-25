@@ -18,9 +18,10 @@ namespace Silvermist
         public static Vector2 RotateVector(Vector2 v, float ang)
         {
             float r = ang * Mathf.PI / 180f;
+            float cos = Mathf.Cos(r), sin = Mathf.Sin(r);
             return new Vector2(
-                v.x * Mathf.Cos(r) - v.y * Mathf.Sin(r),
-                v.x * Mathf.Sin(r) + v.y * Mathf.Cos(r));
+                v.x * cos - v.y * sin,
+                v.x * sin + v.y * cos);
         }
 
         public static Vector2[] BezierCurve(int segments, params Vector2[] Ps)

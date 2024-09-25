@@ -5,7 +5,7 @@ namespace Silvermist
 {
     public class DebugObj : PhysicalObject, IDrawable
     {
-        public float rotation;
+        public float rotation, anchorX, anchorY;
 
         public DebugObj(AbstractPhysicalObject abstr) : base(abstr)
         {
@@ -18,6 +18,8 @@ namespace Silvermist
             collisionLayer = 0;
             bounce = 0.1f;
             buoyancy = 0.9f;
+            anchorX = 0.5f;
+            anchorY = 0.5f;
         }
 
         public override void Update(bool eu)
@@ -25,6 +27,10 @@ namespace Silvermist
             base.Update(eu);
             if (Input.GetKey("."))
                 rotation += (rotation > Mathf.PI * 2f) ? -(Mathf.PI * 2f) : Mathf.PI / 120f;
+            if (Input.GetKey("]")) anchorX = Mathf.Clamp01(anchorX + 0.01f);
+            else if (Input.GetKey("[")) anchorX = Mathf.Clamp01(anchorX - 0.01f);
+            if (Input.GetKey("'")) anchorY = Mathf.Clamp01(anchorY + 0.01f);
+            else if (Input.GetKey(";")) anchorY = Mathf.Clamp01(anchorY - 0.01f);
         }
 
         public override void PlaceInRoom(Room placeRoom)
@@ -35,8 +41,9 @@ namespace Silvermist
 
         public void InitiateSprites(RoomCamera.SpriteLeaser sLeaser, RoomCamera rCam)
         {
-            sLeaser.sprites = new FSprite[1];
-            sLeaser.sprites[0] = TriangleMesh.MakeLongMesh(1, false, false, "JokeRifle");
+            sLeaser.sprites = new FSprite[2];
+            sLeaser.sprites[0] = new FSprite("KrakenBody");
+            sLeaser.sprites[1] = new FSprite("Circle20") { scale = 0.2f, color = Color.red };
             AddToContainer(sLeaser, rCam, null);
         }
 
@@ -45,13 +52,9 @@ namespace Silvermist
             Vector2 pos = Vector2.Lerp(firstChunk.lastPos, firstChunk.pos, timeStacker) - camPos;
             ApplyPalette(sLeaser, rCam, rCam.currentPalette);
 
-            TriangleMesh mesh = sLeaser.sprites[0] as TriangleMesh;
-            mesh.SetPosition(pos);
-            mesh.MoveVertice(0, new Vector2(-20f, 30f));
-            mesh.MoveVertice(1, new Vector2(20f, 30f));
-            mesh.MoveVertice(2, new Vector2(-20f, -30f));
-            mesh.MoveVertice(3, new Vector2(20f, -30f));
-            mesh.rotation = -rotation * 180f / Mathf.PI;
+            sLeaser.sprites[0].SetPosition(pos);
+            sLeaser.sprites[1].SetPosition(pos);
+            sLeaser.sprites[0].SetAnchor(new Vector2(anchorX, anchorY));
         }
 
         public void ApplyPalette(RoomCamera.SpriteLeaser sLeaser, RoomCamera rCam, RoomPalette palette)
