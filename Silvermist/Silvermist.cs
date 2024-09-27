@@ -379,14 +379,12 @@ namespace Silvermist
 
             public FSprite[] InitSprites(RoomCamera rCam)
             {
-                var spr = Futile.atlasManager.GetElementWithName("Cicada1body");
-                Vector2 anchors = FCustom.TrimmedAnchors(spr) / 2f;
                 FSprite[] fSprites =
                 [
-                    new FSprite(spr) { anchorX = anchors.x, anchorY = anchors.y, isVisible = false },
+                    new FSprite("Circle20") { anchorX = 0f },
                     TriangleMesh.MakeLongMesh(4, false, true),
                     new FSprite("Futile_White") { shader = rCam.game.rainWorld.Shaders["WaterNut"] },
-                    new FSprite("Futile_White") { isVisible = false }
+                    new FSprite("Circle20") { anchorX = 0f }
                 ];
                 sprites = fSprites;
                 return sprites;
@@ -417,16 +415,23 @@ namespace Silvermist
                     p += t * v;
                 }
                 mesh.rotation = -angle;
+                p = mesh.GetPosition();
 
-                sprites[2].SetPosition(mesh.GetPosition() + FCustom.RotateVector(mesh.vertices[15], angle));
+                sprites[2].SetPosition(p + FCustom.RotateVector(mesh.vertices[15], angle) * 1.5f + Vector2.up * 3f);
                 float num = Mathf.Pow(Mathf.InverseLerp(1, 0, level / (float)(owner.petals.Length / 2f)), 0.75f);
                 sprites[2].scaleX = nectarGrowth * size / 4 * num;
                 sprites[2].scaleY = nectarGrowth * size / 6 * num;
                 sprites[2].rotation = -angle;
 
-                //sprites[0].SetPosition(mesh.GetPosition());
-                //sprites[0].rotation = (index % 2 == 0 ? 1 : -1) * angle / 2f - (index % 2 == 0 ? 0 : 180);
-                //sprites[0].scale = size / 7f * (num + 0.5f);
+                sprites[0].SetPosition(p);
+                sprites[0].rotation = -angle;
+                sprites[0].scaleX = size / 6f * (num + 1f);
+                sprites[0].scaleY = size / 10f * (num + 1f);
+
+                sprites[3].SetPosition(p + Vector2.down * 6f * (1f - (index / (float)(owner.petals.Length - 1))));
+                sprites[3].rotation = -angle;
+                sprites[3].scaleX = size / 5f * (num + 1f);
+                sprites[3].scaleY = size / 12f * (num + 1f);
             }
 
             public void ApplyPalette(RoomPalette palette)
@@ -439,8 +444,9 @@ namespace Silvermist
                     if (i < mesh.vertices.Length - 8) mesh.verticeColors[i] = Color.Lerp(cm, palette.blackColor, owner.darkness);
                     else mesh.verticeColors[i] = Color.Lerp((i % 4 < 2 || i > mesh.vertices.Length - 5) ? cs : cm, palette.blackColor, owner.darkness);
                 }
-                sprites[0].color = Color.Lerp(Color.Lerp(owner.color, palette.blackColor, 0.5f), palette.blackColor, owner.darkness);
+                sprites[0].color = Color.Lerp(Color.Lerp(owner.color, palette.blackColor, 0.6f), palette.blackColor, owner.darkness);
                 sprites[2].color = Color.Lerp(cs, Color.white, 0.6f);
+                sprites[3].color = Color.Lerp(owner.color, palette.blackColor, owner.darkness + 0.2f * (1f - (index / (float)(owner.petals.Length - 1))));
             }
         }
     }
