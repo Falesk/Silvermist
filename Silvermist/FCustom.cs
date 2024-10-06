@@ -24,6 +24,8 @@ namespace Silvermist
                 v.x * sin + v.y * cos);
         }
 
+        public static float AngleX(Vector2 a) => (a.y > 0f ? 1f : -1f) * Mathf.Acos(a.x / a.magnitude) * 180f / Mathf.PI;
+
         public static Vector2[] BezierCurve(int segments, params Vector2[] Ps)
         {
             Vector2[] curvePoints = new Vector2[segments];

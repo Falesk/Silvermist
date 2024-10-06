@@ -10,17 +10,19 @@ namespace Silvermist
         public Leaf[] leaves;
         public Petal[] petals;
         public Vector2 placedPos, rootPos;
+        public Vector2[] bezierPoints;
         public Vector2[,] stalkSegments;
         public Color color;
-        public float darkness, lastDarkness;
-        public int stalkSegs, stalkSprite;
-        public bool twilight;
+        public float darkness, lastDarkness, catching;
+        public int stalkSegs, stalkSprite, crtTime;
+        public bool twilight, dirtyPoints;
         public AbstractConsumable AbstractSilvermist => abstractPhysicalObject as AbstractConsumable;
-        public int TotalSprites => 1 + leaves.Length + petals.Length * 4;
+        public int TotalSprites => 1 + leaves.Length + petals.Length * 5;
+        public BodyChunk collidedChunk;
 
         public Silvermist(AbstractPhysicalObject abstr) : base(abstr)
         {
-            bodyChunks = [ new BodyChunk(this, 0, Vector2.zero, 5, 0.05f) ];
+            bodyChunks = [ new BodyChunk(this, 0, Vector2.zero, 1, 0.05f) ];
             bodyChunkConnections = [];
             gravity = 0f;
             airFriction = 0.999f;
@@ -29,6 +31,7 @@ namespace Silvermist
             collisionLayer = 2;
             bounce = 0.1f;
             buoyancy = 0.1f;
+            dirtyPoints = false;
             Random.State state = Random.state;
             Random.InitState(abstr.ID.RandomSeed);
             twilight = Random.value < 0.66f;
@@ -41,12 +44,33 @@ namespace Silvermist
             SetStalkSegments();
             CreateLeaves();
             CreatePetals();
+            firstChunk.rad = stalkSegs;
             Random.state = state;
         }
 
         public override void Update(bool eu)
         {
             base.Update(eu);
+
+            for (int i = 0; i < room.physicalObjects[1].Count; i++)
+                if (room.physicalObjects[1][i] is Creature c && Mathf.Abs(rootPos.x - c.mainBodyChunk.pos.x) < stalkSegs && Mathf.Abs(rootPos.y - c.mainBodyChunk.pos.y) < stalkSegments[stalkSegs - 1, 0].y)
+                    collidedChunk = c.mainBodyChunk;
+            if (collidedChunk != null && (collidedChunk.owner == null || Mathf.Abs(rootPos.x - collidedChunk.pos.x) > 2f * stalkSegs || Mathf.Abs(rootPos.y - collidedChunk.pos.y) > 1.5f * stalkSegments[stalkSegs - 1, 0].y))
+                collidedChunk = null;
+
+            if (collidedChunk != null) crtTime++;
+            else crtTime = 0;
+            if (crtTime > 200 && bezierPoints[2].y > 5f)
+                CatchProcess();
+
+            if (dirtyPoints)
+            {
+                Vector2[] points = FCustom.BezierCurve(stalkSegs, bezierPoints);
+                for (int i = 0; i < stalkSegs; i++)
+                    stalkSegments[i, 0] = points[i];
+                for (int i = 0; i < petals.Length; i++)
+                    petals[i].pos = rootPos + stalkSegments[(int)(i * 2.5f) + 2, 0];
+            }
 
             if (ModManager.MSC && MoreSlugcats.MMF.cfgCreatureSense.Value && room.world.game.IsStorySession && room.world.game.cameras[0]?.hud != null)
             {
@@ -71,6 +95,7 @@ namespace Silvermist
             else placedPos = placeRoom.MiddleOfTile(abstractPhysicalObject.pos);
 
             rootPos = default;
+            catching = default;
             if (!placeRoom.GetTile(placedPos).Solid)
             {
                 int x = placeRoom.GetTile(placedPos).X;
@@ -101,6 +126,8 @@ namespace Silvermist
             rootPos.y += 10f;
             rootPos.x += Random.Range(-10f, 10f);
             firstChunk.HardSetPosition(new Vector2(rootPos.x, rootPos.y + 10f));
+            for (int i = 0; i < petals.Length; i++)
+                petals[i].pos += rootPos;
         }
 
         public void CreateLeaves()
@@ -146,11 +173,12 @@ namespace Silvermist
             Vector2 P1 = new Vector2(0f, stalkSegs * 2.5f) + new Vector2(Mathf.Lerp(-15, 15, Random.value), Mathf.Lerp(-15, 15, Random.value));
             Vector2 P2 = new Vector2(0f, stalkSegs * 2.5f) + new Vector2(Mathf.Lerp(-15, 15, Random.value), Mathf.Lerp(-15, 15, Random.value));
             Vector2 P3 = new Vector2(0f, stalkSegs * 5f) + new Vector2(Mathf.Lerp(-15, 15, Random.value), Mathf.Lerp(-15, 15, Random.value));
-            Vector2[] points = FCustom.BezierCurve(stalkSegs, P1, P2, P3);
+            bezierPoints = [P1, P2, P3];
+            Vector2[] points = FCustom.BezierCurve(stalkSegs, bezierPoints);
             for (int i = 0; i < stalkSegs; i++)
             {
                 stalkSegments[i, 0] = points[i];
-                stalkSegments[i, 1] *= 0f;
+                stalkSegments[i, 1] = points[i];
             }
         }
 
@@ -161,6 +189,17 @@ namespace Silvermist
             Vector2 P3 = (straight ? new Vector2(45f, 50f) : new Vector2(60f, 5f)) + new Vector2(Mathf.Lerp(-8f, 8f, Random.value), Mathf.Lerp(-8f, 8f, Random.value));
             float m = Mathf.Lerp(0.7f, 1.2f, Mathf.InverseLerp(50f, 110f, len));
             return [P1 * m, P2 * m, P3 * m];
+        }
+
+        public void CatchProcess()
+        {
+            if (collidedChunk == null) return;
+            bezierPoints[2] = FCustom.RotateVector(bezierPoints[2], Mathf.PI / 10f);
+            bezierPoints[2].y += Mathf.Sin(-Mathf.PI / 10f) / 2f;
+            catching = Mathf.InverseLerp(40, 5, bezierPoints[2].y);
+            dirtyPoints = true;
+            for (int i = 0; i < petals.Length; i++)
+                petals[i].angle += Mathf.PI / 10f;
         }
 
         public void SortLeaves()
@@ -267,7 +306,7 @@ namespace Silvermist
             public Color clrMain, clrSecond;
             public int segments = 10;
             public float angle;
-            public bool dirtyUpdate, dirtyPalette;
+            public bool dirtyUpdate;
 
             public Leaf(Silvermist silvermist, float ang, Vector2[] points)
             {
@@ -279,7 +318,6 @@ namespace Silvermist
                 leafVertices = new Vector3[2 * segments, 4];
                 mainPoints = FCustom.BezierCurve(segments, points);
                 dirtyUpdate = true;
-                dirtyPalette = true;
             }
 
             public void Update()
@@ -348,9 +386,10 @@ namespace Silvermist
             public Silvermist owner;
             public FSprite[] sprites;
             public Vector2[] points;
-            public Vector2 pos;
-            public float size, angle, nectarGrowth;
+            public Vector2 pos, nectarPos;
+            public float size, angle, nectarGrowth, threadLength;
             public int level, index;
+            public bool attached;
 
             public Petal(Silvermist silvermist, Vector2 attachPos, float _size, float ang, int st)
             {
@@ -361,6 +400,7 @@ namespace Silvermist
                 index = st;
                 level = st / 2;
                 points = new Vector2[4];
+                nectarPos = pos;
                 Vector2 p = Vector2.zero, prevDir = Vector2.right;
                 for (int i = 0; i < 4; i++)
                 {
@@ -375,24 +415,38 @@ namespace Silvermist
             {
                 nectarGrowth += (nectarGrowth >= 1) ? 0f : 0.005f * Mathf.Lerp(0.8f, 1.2f, Random.value);
                 nectarGrowth = Mathf.Clamp01(nectarGrowth);
+
+                if (owner.collidedChunk != null)
+                {
+                    float dist = Vector2.Distance(nectarPos, owner.collidedChunk.pos);
+                    if (dist < 15f && !attached)
+                        attached = true;
+                    if (attached && dist < 60f)
+                    {
+                        threadLength = dist;
+                        owner.collidedChunk.vel *= 0.8f - owner.catching * 0.6f;
+                    }
+                    else attached = false;
+                    if (!attached) threadLength = Mathf.Lerp(threadLength, 0, 0.5f);
+                }
             }
 
             public FSprite[] InitSprites(RoomCamera rCam)
             {
-                FSprite[] fSprites =
+                sprites =
                 [
                     new FSprite("Circle20") { anchorX = 0f },
                     TriangleMesh.MakeLongMesh(4, false, true),
                     new FSprite("Futile_White") { shader = rCam.game.rainWorld.Shaders["WaterNut"] },
-                    new FSprite("Circle20") { anchorX = 0f }
+                    new FSprite("Circle20") { anchorX = 0f },
+                    new FSprite("pixel") { anchorX = 0f }
                 ];
-                sprites = fSprites;
                 return sprites;
             }
 
             public void Draw(Vector2 camPos, RoomPalette palette)
             {
-                Vector2 p = owner.rootPos + pos - camPos;
+                Vector2 p = pos - camPos;
                 ApplyPalette(palette);
 
                 TriangleMesh mesh = sprites[1] as TriangleMesh;
@@ -417,8 +471,9 @@ namespace Silvermist
                 mesh.rotation = -angle;
                 p = mesh.GetPosition();
 
-                sprites[2].SetPosition(p + FCustom.RotateVector(mesh.vertices[15], angle) * 1.5f + Vector2.up * 3f);
-                float num = Mathf.Pow(Mathf.InverseLerp(1, 0, level / (float)(owner.petals.Length / 2f)), 0.75f);
+                nectarPos = p + camPos + FCustom.RotateVector(mesh.vertices[15], angle) * 1.5f + Vector2.up * 3f;
+                sprites[2].SetPosition(nectarPos - camPos);
+                float num = Mathf.Pow(Mathf.InverseLerp(1, 0, level / (float)(owner.petals.Length / 2)), 0.75f);
                 sprites[2].scaleX = nectarGrowth * size / 4 * num;
                 sprites[2].scaleY = nectarGrowth * size / 6 * num;
                 sprites[2].rotation = -angle;
@@ -432,6 +487,15 @@ namespace Silvermist
                 sprites[3].rotation = -angle;
                 sprites[3].scaleX = size / 5f * (num + 1f);
                 sprites[3].scaleY = size / 12f * (num + 1f);
+
+                if (owner.collidedChunk != null && threadLength != 0)
+                {
+                    sprites[4].SetPosition(nectarPos - camPos + Vector2.up * 5f * num);
+                    Vector2 d = owner.collidedChunk.pos - nectarPos;
+                    sprites[4].rotation = -FCustom.AngleX(d);
+                    sprites[4].scaleX = threadLength;
+                }
+                else sprites[4].scaleX = 0;
             }
 
             public void ApplyPalette(RoomPalette palette)
@@ -447,6 +511,7 @@ namespace Silvermist
                 sprites[0].color = Color.Lerp(Color.Lerp(owner.color, palette.blackColor, 0.6f), palette.blackColor, owner.darkness);
                 sprites[2].color = Color.Lerp(cs, Color.white, 0.6f);
                 sprites[3].color = Color.Lerp(owner.color, palette.blackColor, owner.darkness + 0.2f * (1f - (index / (float)(owner.petals.Length - 1))));
+                sprites[4].color = sprites[2].color;
             }
         }
     }
